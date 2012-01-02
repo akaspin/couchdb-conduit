@@ -6,7 +6,7 @@ stability:      Experimental
 category:       Database, Conduit
 license:        BSD3
 license-file:   LICENSE
-author:         Alexander Dorofeev <aka.spin@gmail.com>
+author:         John Lenz <lenz@math.uic.edu>, Alexander Dorofeev <aka.spin@gmail.com>
 maintainer:     Alexander Dorofeev <aka.spin@gmail.com>
 synopsis:       Couch DB client library using http-conduit and aeson
 
