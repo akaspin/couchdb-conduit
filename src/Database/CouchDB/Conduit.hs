@@ -3,7 +3,17 @@
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 
-module Database.CouchDB.Conduit where
+module Database.CouchDB.Conduit (
+    Path,
+    Revision,
+    CouchConnection(..),
+    MonadCouch(..),
+    CouchError(..),
+    couch,
+    protect,
+    runCouch,
+    withCouchConnection
+) where
 
 import Prelude hiding (catch)
 

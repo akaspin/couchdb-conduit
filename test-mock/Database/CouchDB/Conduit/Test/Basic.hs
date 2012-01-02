@@ -61,7 +61,7 @@ case_couchProtect :: Assertion
 case_couchProtect = do 
     res <- runCouch "localhost" 5984 "" $ runResourceT $ couch 
             HT.methodGet "" [] [] 
-            (protectT handlerJ) 
+            (protect handlerJ) 
             (H.RequestBodyBS B.empty)
     print res
 
@@ -69,7 +69,7 @@ case_couchProtect404 :: Assertion
 case_couchProtect404 = do 
     res <- runCouch "localhost" 5984 "non_exisi" $ runResourceT $ couch 
             HT.methodGet "" [] [] 
-            (protectT handlerJ) 
+            (protect handlerJ) 
             (H.RequestBodyBS B.empty)
     print res
 
@@ -87,21 +87,4 @@ couchGetT :: (MonadCouch m) =>
     -> m A.Value
 couchGetT p q = runResourceT $ couch HT.methodGet p [] q handlerJ 
             (H.RequestBodyBS B.empty) 
-
-protectT :: ResourceIO m => 
-       H.ResponseConsumer m b
-    -> H.ResponseConsumer m b
-protectT c st@(HT.Status 200 _) hdrs bsrc = c st hdrs bsrc
-protectT c st@(HT.Status 201 _) hdrs bsrc = c st hdrs bsrc
-protectT c st@(HT.Status 202 _) hdrs bsrc = c st hdrs bsrc
-protectT c st@(HT.Status 304 _) hdrs bsrc = c st hdrs bsrc
-protectT _ (HT.Status sCode sMsg) _ bsrc = do
-    v <- catch (bsrc $$ sinkParser A.json) (\(_::SomeException) -> return A.Null)
-    liftBase $ throwIO $ CouchError (Just sCode) $ msg v
-  where 
-    msg v = BU8.toString sMsg ++ reason v
-    reason (A.Object v) = case M.lookup "reason" v of
-            Just (A.String t) -> ": " ++ T.unpack t
-            _                 -> ""
-    reason _ = []
 
