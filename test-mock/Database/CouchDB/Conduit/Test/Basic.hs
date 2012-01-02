@@ -48,8 +48,8 @@ data CouchConnection = CouchConnection {
 class (MonadBaseControl IO m, MonadIO m) => MonadCouch m where
     couchConnection :: m CouchConnection
 
-instance (MonadBaseControl IO m, MonadIO m) =>
-    MonadCouch (ReaderT CouchConnection m) 
+instance (MonadTrans t, MonadBaseControl IO (t m), MonadIO (t m)) =>
+    MonadCouch (ReaderT CouchConnection (t m)) 
     where
     couchConnection = ask
     
@@ -76,14 +76,15 @@ handlerJ _status _hdrs bsrc = bsrc $$ sinkParser A.json
 couchGet p q = couch HT.methodGet p [] q handlerJ 
             (H.RequestBodyBS B.empty) 
 
-couch :: (MonadCouch (t (ResourceT m)), ResourceIO m, MonadTrans t) =>
-            HT.Method
-            -> String
-            -> HT.RequestHeaders
-            -> HT.Ascii
-            -> H.ResponseConsumer m b
-            -> H.RequestBody m
-            -> t (ResourceT m) b
+couch :: 
+        (ResourceIO m, MonadTrans t, MonadCouch (t (ResourceT m))) =>
+        HT.Method
+        -> [Char]
+        -> HT.RequestHeaders
+        -> HT.Ascii
+        -> H.ResponseConsumer m b
+        -> H.RequestBody m
+        -> t (ResourceT m) b
 couch meth path hdrs qs acts reqBody = do
     conn <- couchConnection
     let req = H.def 
