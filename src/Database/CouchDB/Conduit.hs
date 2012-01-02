@@ -1,16 +1,22 @@
 {-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 
 module Database.CouchDB.Conduit where
 
+import Prelude hiding (catch)
+
 -- control
 import Control.Monad.Trans.Reader (ReaderT, ask, runReaderT)
-import Control.Exception (Exception)
+import Control.Exception (Exception, SomeException)
+import Control.Exception.Lifted (catch, throwIO)
 import Control.Monad.Trans.Class (lift)
+import Control.Monad.Base (liftBase)
 
 -- conduit
-import Data.Conduit (ResourceIO, ResourceT)
+import Data.Conduit (ResourceIO, ResourceT, ($$))
+import Data.Conduit.Attoparsec (sinkParser)
 
 -- networking
 import qualified Network.HTTP.Conduit as H
@@ -18,8 +24,11 @@ import qualified Network.HTTP.Types as HT
 
 -- data
 import Data.Typeable (Typeable)
+import Data.Aeson (json, Value(..))
 import qualified Data.ByteString as B
+import qualified Data.ByteString.UTF8 as BU8 (toString)
 import qualified Data.Text as T
+import qualified Data.HashMap.Lazy as M (lookup)
 
 -- | A path to a CouchDB Object.
 -- 
@@ -83,12 +92,25 @@ couch meth path hdrs qs cons reqBody = do
             , H.requestBody     = reqBody }
     H.http req cons (manager conn)
 
--- | TODO. Protect response from typical errors like 404, 406 e.t.c.
---   
+-- | Protect response from typical errors like 404, 406 e.t.c. Only responses 
+--   with codes 200, 201, 202 and 304 are passed. 
 protect :: ResourceIO m => 
        H.ResponseConsumer m b
     -> H.ResponseConsumer m b
-protect cons = undefined
+protect c st@(HT.Status 200 _) hdrs bsrc = c st hdrs bsrc
+protect c st@(HT.Status 201 _) hdrs bsrc = c st hdrs bsrc
+protect c st@(HT.Status 202 _) hdrs bsrc = c st hdrs bsrc
+protect c st@(HT.Status 304 _) hdrs bsrc = c st hdrs bsrc
+protect _ (HT.Status sCode sMsg) _ bsrc = do
+    v <- catch (bsrc $$ sinkParser json) 
+               (\(_::SomeException) -> return Null)
+    liftBase $ throwIO $ CouchError (Just sCode) $ msg v
+  where 
+    msg v = BU8.toString sMsg ++ reason v
+    reason (Object v) = case M.lookup "reason" v of
+            Just (String t) -> ": " ++ T.unpack t
+            _                 -> ""
+    reason _ = []
 
 
 runCouch :: ResourceIO m =>

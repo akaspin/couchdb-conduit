@@ -26,7 +26,9 @@ library
                    http-types,
                    text,
                    attoparsec-conduit,
-                   blaze-builder
+                   blaze-builder,
+                   lifted-base,
+                   unordered-containers
   ghc-options:      -Wall
   exposed-modules:  Database.CouchDB.Conduit
 
@@ -53,12 +55,11 @@ test-suite test-mock
                    attoparsec-conduit,
                    couchdb-conduit,
                    monad-control,
-                   blaze-builder
+                   blaze-builder,
+                   lifted-base,
+                   unordered-containers
   ghc-options:     -Wall -rtsopts
   hs-source-dirs:  test-mock
   main-is:         Main.hs
-  other-modules:   
-                   Database.CouchDB.Conduit.Test.Connect,
-                   Database.CouchDB.Conduit.Test.Aeson,
-                   Database.CouchDB.Conduit.Test.Basic
+  other-modules:   Database.CouchDB.Conduit.Test.Basic
 
