@@ -30,9 +30,9 @@ import qualified Data.ByteString.UTF8 as BU8
 
 tests :: Test
 tests = testGroup "Couch mock" [
---    testCase "Inside couch" case_couchIn,
---    testCase "Outside couch" case_couchOut,
---    testCase "Outside couch" case_couchGet
+    testCase "Inside couch" case_couchIn,
+    testCase "Outside couch" case_couchOut,
+    testCase "Outside couch" case_couchGet
     ]
 
 -- | Represents a single connection to CouchDB server. 
@@ -58,15 +58,15 @@ case_couchIn = runCouch "localhost" 5984 "" $ do
     res <- couch HT.methodGet "" [] "" handlerJ (H.RequestBodyBS B.empty)
     liftBase $ print res
 
---case_couchOut :: Assertion
---case_couchOut = do 
---    res <- runCouch "localhost" 5984 "" $ couch HT.methodGet "" [] "" handlerJ (H.RequestBodyBS B.empty)
---    print res
---
---case_couchGet :: Assertion
---case_couchGet = do 
---    res <- runCouch "localhost" 5984 "" $ couchGet "" ""
---    print res
+case_couchOut :: Assertion
+case_couchOut = do 
+    res <- runCouch "localhost" 5984 "" $ couch HT.methodGet "" [] "" handlerJ (H.RequestBodyBS B.empty)
+    print res
+
+case_couchGet :: Assertion
+case_couchGet = do 
+    res <- runCouch "localhost" 5984 "" $ couchGet "" ""
+    print res
 
 handlerJ :: ResourceIO m => H.ResponseConsumer m Value
 handlerJ _status _hdrs bsrc = bsrc $$ sinkParser A.json
