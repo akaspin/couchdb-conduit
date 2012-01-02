@@ -76,16 +76,14 @@ handlerJ _status _hdrs bsrc = bsrc $$ sinkParser A.json
 couchGet p q = couch HT.methodGet p [] q handlerJ 
             (H.RequestBodyBS B.empty) 
 
-
-
---couch :: (MonadCouch m) =>
---                        HT.Method
---                        -> [Char]
---                        -> HT.RequestHeaders
---                        -> HT.Ascii
---                        -> H.ResponseConsumer m b
---                        -> H.RequestBody m
---                        -> ResourceT m b
+couch :: (MonadCouch (t (ResourceT m)), ResourceIO m, MonadTrans t) =>
+            HT.Method
+            -> String
+            -> HT.RequestHeaders
+            -> HT.Ascii
+            -> H.ResponseConsumer m b
+            -> H.RequestBody m
+            -> t (ResourceT m) b
 couch meth path hdrs qs acts reqBody = do
     conn <- couchConnection
     let req = H.def 
