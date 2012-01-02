@@ -3,7 +3,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE FlexibleContexts #-}
-{-# LANGUAGE MultiParamTypeClasses, ScopedTypeVariables #-}
+{-# LANGUAGE MultiParamTypeClasses, UndecidableInstances #-}
 
 module Database.CouchDB.Conduit.Test.Basic (tests) where
 
@@ -11,7 +11,7 @@ import Test.Framework (testGroup, Test)
 import Test.Framework.Providers.HUnit (testCase)
 import Test.HUnit (Assertion)
 
-import Control.Monad.IO.Class (MonadIO)
+import Control.Monad.IO.Class (MonadIO, liftIO)
 import Control.Monad.Trans.Control
 import Control.Monad.Trans.Resource
 import Control.Monad.Trans.Class
@@ -45,22 +45,21 @@ data CouchConnection = CouchConnection {
 
 --type MonadCouch a = ResourceT (ReaderT CouchConnection a)
 
-class (MonadBaseControl IO m, MonadIO m) => MonadCouch m where
+class ResourceIO m => MonadCouch m where
     couchConnection :: m CouchConnection
 
-instance (MonadTrans t, MonadBaseControl IO (t m), MonadIO (t m)) =>
-    MonadCouch (ReaderT CouchConnection (t m)) 
+instance ResourceIO m => MonadCouch (ReaderT CouchConnection m) 
     where
     couchConnection = ask
     
 case_couchIn :: Assertion
 case_couchIn = runCouch "localhost" 5984 "" $ do
-    res <- couch HT.methodGet "" [] "" handlerJ (H.RequestBodyBS B.empty)
+    res <- runResourceT $ couch HT.methodGet "" [] "" handlerJ (H.RequestBodyBS B.empty)
     liftBase $ print res
 
 case_couchOut :: Assertion
 case_couchOut = do 
-    res <- runCouch "localhost" 5984 "" $ couch HT.methodGet "" [] "" handlerJ (H.RequestBodyBS B.empty)
+    res <- runCouch "localhost" 5984 "" $ runResourceT $ couch HT.methodGet "" [] "" handlerJ (H.RequestBodyBS B.empty)
     print res
 
 case_couchGet :: Assertion
@@ -71,22 +70,23 @@ case_couchGet = do
 handlerJ :: ResourceIO m => H.ResponseConsumer m Value
 handlerJ _status _hdrs bsrc = bsrc $$ sinkParser A.json
 
-
-
-couchGet p q = couch HT.methodGet p [] q handlerJ 
+couchGet :: (MonadCouch m) => 
+       [Char] 
+    -> BU8.ByteString 
+    -> m Value
+couchGet p q = runResourceT $ couch HT.methodGet p [] q handlerJ 
             (H.RequestBodyBS B.empty) 
 
-couch :: 
-        (ResourceIO m, MonadTrans t, MonadCouch (t (ResourceT m))) =>
+couch :: (MonadCouch m) =>
         HT.Method
         -> [Char]
         -> HT.RequestHeaders
         -> HT.Ascii
         -> H.ResponseConsumer m b
         -> H.RequestBody m
-        -> t (ResourceT m) b
+        -> ResourceT m b
 couch meth path hdrs qs acts reqBody = do
-    conn <- couchConnection
+    conn <- lift couchConnection
     let req = H.def 
             { H.method      = meth
             , H.host        = host conn
@@ -95,14 +95,14 @@ couch meth path hdrs qs acts reqBody = do
             , H.path        = BU8.fromString ("/" ++ dbname conn ++ "/" ++ path)
             , H.queryString = qs
             , H.requestBody = reqBody }
-    lift $ H.http req acts (manager conn)
+    H.http req acts (manager conn)
 
 
 runCouch :: ResourceIO m =>
        String
     -> Int
     -> String
-    -> ReaderT CouchConnection (ResourceT m) a
+    -> ReaderT CouchConnection m a
     -> m a
 runCouch h p d = withCouchConnection h p d . runReaderT
 
@@ -110,8 +110,7 @@ withCouchConnection :: ResourceIO m =>
        String
     -> Int
     -> String
-    -> (CouchConnection -> ResourceT m a)
+    -> (CouchConnection -> m a)
     -> m a
 withCouchConnection h p db f = 
-     H.withManager $ \m -> f $ CouchConnection (BU8.fromString h) p m db
-     
+     H.withManager $ \m -> lift $ f $ CouchConnection (BU8.fromString h) p m db
