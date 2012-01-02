@@ -112,7 +112,20 @@ protect _ (HT.Status sCode sMsg) _ bsrc = do
             _                 -> ""
     reason _ = []
 
-
+-- | Run a sequence of CouchDB actions.
+--
+--   The functions below to access CouchDB require a 'MonadCouch' instance to 
+--   access the connection information.  'ReaderT' is an instance of 
+--   'MonadCouch', and /runCouch/ runs a sequence of database actions using 
+--   'ReaderT'.  See the top of this page for an example using /runCouch/.
+--
+--   The main reason to not use /runCouch/ is to obtain more control over 
+--   connection pooling. Also, if your db code is part of a larger monad, it 
+--   makes sense to just make the larger monad an instance of 'MonadCouch' and 
+--   skip the intermediate ReaderT, since then performance is improved by 
+--   eliminating one monad from the final transformer stack.
+--
+--   This function is a combination of 'withCouchConnection' and 'runReaderT'
 runCouch :: ResourceIO m =>
        B.ByteString
     -> Int
