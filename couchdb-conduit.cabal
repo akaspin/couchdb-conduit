@@ -25,12 +25,10 @@ library
                    aeson,
                    http-types,
                    text,
-                   attoparsec-conduit
+                   attoparsec-conduit,
+                   blaze-builder
   ghc-options:      -Wall
-  exposed-modules:  
-                    Database.CouchDB.Conduit,
-                    Database.CouchDB.Conduit.Connection,
-                    Database.CouchDB.Conduit.Error
+  exposed-modules:  Database.CouchDB.Conduit
 
 test-suite test-mock
   type:            exitcode-stdio-1.0
@@ -54,7 +52,8 @@ test-suite test-mock
                    text,
                    attoparsec-conduit,
                    couchdb-conduit,
-                   monad-control
+                   monad-control,
+                   blaze-builder
   ghc-options:     -Wall -rtsopts
   hs-source-dirs:  test-mock
   main-is:         Main.hs
