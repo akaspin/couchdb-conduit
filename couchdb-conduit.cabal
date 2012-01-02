@@ -1,0 +1,65 @@
+name:           couchdb-conduit
+version:        0.1
+cabal-version:  >= 1.8
+build-type:     Simple
+stability:      Experimental
+category:       Database, Conduit
+license:        BSD3
+license-file:   LICENSE
+author:         Alexander Dorofeev <aka.spin@gmail.com>
+maintainer:     Alexander Dorofeev <aka.spin@gmail.com>
+synopsis:       Couch DB client library using http-conduit and aeson
+
+library
+  hs-source-dirs:   src
+  build-depends:    
+                   base >= 4 && < 5,
+                   http-conduit,
+                   bytestring,
+                   monad-control,
+                   conduit,
+                   utf8-string,
+                   transformers,
+                   transformers-base,
+                   case-insensitive,
+                   aeson,
+                   http-types,
+                   text,
+                   attoparsec-conduit
+  ghc-options:      -Wall
+  exposed-modules:  
+                    Database.CouchDB.Conduit,
+                    Database.CouchDB.Conduit.Connection,
+                    Database.CouchDB.Conduit.Error
+
+test-suite test-mock
+  type:            exitcode-stdio-1.0
+  x-uses-tf:       true
+  build-depends:   
+                   base >= 4,
+                   HUnit >= 1.2 && < 2,
+                   QuickCheck >= 2.4,
+                   test-framework >= 0.4.1,
+                   test-framework-quickcheck2,
+                   test-framework-hunit,
+                   http-conduit,
+                   conduit,
+                   utf8-string,
+                   transformers,
+                   transformers-base,
+                   case-insensitive,
+                   bytestring,
+                   aeson,
+                   http-types,
+                   text,
+                   attoparsec-conduit,
+                   couchdb-conduit,
+                   monad-control
+  ghc-options:     -Wall -rtsopts
+  hs-source-dirs:  test-mock
+  main-is:         Main.hs
+  other-modules:   
+                   Database.CouchDB.Conduit.Test.Connect,
+                   Database.CouchDB.Conduit.Test.Aeson,
+                   Database.CouchDB.Conduit.Test.Basic
+
