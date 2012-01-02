@@ -44,7 +44,7 @@ import qualified Data.HashMap.Lazy as M (lookup)
 -- 
 --   /Note:/ In CouchDB database or path /can/ contain slashes. But, to work 
 --   with such objects, path must be escaped.
-type Path = String
+type Path = B.ByteString
 
 -- | Represents a revision of a CouchDB Document. 
 type Revision = T.Text
@@ -57,7 +57,7 @@ data CouchConnection = CouchConnection {
       host      :: B.ByteString     -- ^ Hostname
     , port      :: Int              -- ^ Port
     , manager   :: H.Manager        -- ^ Manager
-    , dbname    :: B.ByteString     -- ^ Database name
+    , dbname    :: Path             -- ^ Database name
 }
 
 -- | A monad which allows access to the connection
@@ -83,7 +83,7 @@ instance Exception CouchError
 --   from exceptions use 'protect'.
 couch :: (MonadCouch m) =>
            HT.Method                -- ^ Method
-        -> B.ByteString             -- ^ Path
+        -> Path                     -- ^ Path
         -> HT.RequestHeaders        -- ^ Headers
         -> HT.Query                 -- ^ Query args
         -> H.ResponseConsumer m b   -- ^ Response consumer
@@ -137,10 +137,10 @@ protect _ (HT.Status sCode sMsg) _ bsrc = do
 --
 --   This function is a combination of 'withCouchConnection' and 'runReaderT'
 runCouch :: ResourceIO m =>
-       B.ByteString
-    -> Int
-    -> B.ByteString
-    -> ReaderT CouchConnection m a
+       B.ByteString                 -- ^ Host
+    -> Int                          -- ^ Port
+    -> Path                         -- ^ Database
+    -> ReaderT CouchConnection m a  -- ^ CouchDB actions
     -> m a
 runCouch h p d = withCouchConnection h p d . runReaderT
 
@@ -152,10 +152,10 @@ runCouch h p d = withCouchConnection h p d . runReaderT
 --   the other hand, if you want to implement connection pooling, you will not 
 --   be able to use withCouchConnection and must create the connection yourself.
 withCouchConnection :: ResourceIO m =>
-       B.ByteString         -- ^ Host
-    -> Int                  -- ^ Port
-    -> B.ByteString         -- ^ 
-    -> (CouchConnection -> m a)
+       B.ByteString                 -- ^ Host
+    -> Int                          -- ^ Port
+    -> Path                         -- ^ Database 
+    -> (CouchConnection -> m a)     -- ^ Function to run
     -> m a
 withCouchConnection h p db f = 
      H.withManager $ \m -> lift $ f $ CouchConnection h p m db
