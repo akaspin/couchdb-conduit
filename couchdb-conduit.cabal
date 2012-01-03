@@ -14,10 +14,10 @@ library
   hs-source-dirs:   src
   build-depends:    
                    base >= 4 && < 5,
-                   http-conduit,
-                   bytestring,
                    monad-control,
                    conduit,
+                   http-conduit,
+                   bytestring,
                    utf8-string,
                    transformers,
                    transformers-base,
@@ -32,35 +32,3 @@ library
   exposed-modules:  
                     Database.CouchDB.Conduit,
                     Database.CouchDB.Conduit.Explicit
-
-test-suite test-mock
-  type:            exitcode-stdio-1.0
-  x-uses-tf:       true
-  build-depends:   
-                   base >= 4,
-                   HUnit >= 1.2 && < 2,
-                   QuickCheck >= 2.4,
-                   test-framework >= 0.4.1,
-                   test-framework-quickcheck2,
-                   test-framework-hunit,
-                   http-conduit,
-                   conduit,
-                   utf8-string,
-                   transformers,
-                   transformers-base,
-                   case-insensitive,
-                   bytestring,
-                   aeson,
-                   http-types,
-                   text,
-                   attoparsec-conduit,
-                   couchdb-conduit,
-                   monad-control,
-                   blaze-builder,
-                   lifted-base,
-                   unordered-containers
-  ghc-options:     -Wall -rtsopts
-  hs-source-dirs:  test-mock
-  main-is:         Main.hs
-  other-modules:   Database.CouchDB.Conduit.Test.Basic
-

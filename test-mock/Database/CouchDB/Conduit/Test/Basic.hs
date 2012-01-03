@@ -28,6 +28,7 @@ import Data.Conduit.Attoparsec
 import qualified Network.HTTP.Conduit as H
 import qualified Network.HTTP.Types as HT
 
+import           Data.Maybe (fromJust)
 import qualified Data.Text as T
 import qualified Data.Aeson as A
 import qualified Data.ByteString as B
@@ -38,53 +39,23 @@ import Database.CouchDB.Conduit
 
 tests :: Test
 tests = testGroup "Couch mock" [
---    testCase "Outside couch" case_couchGet,
---    testCase "Protect" case_couchProtect,
---    testCase "Protect" case_couchProtect404
-    testCase "Protect" case_couchSource
+    testCase "Protect" case_couchSource,
+    testCase "Rev" case_couchRev
     ]
 
-
-case_couchIn :: Assertion
-case_couchIn = runCouch "localhost" 5984 "" $ do
-    res <- runResourceT $ couch 
-                HT.methodGet "" [] [] 
-                handlerJ 
-                (H.RequestBodyBS B.empty)
+case_couchRev :: Assertion
+case_couchRev = runCouch "localhost" 5984 "testcouchenum" $ do
+    res <- runResourceT $ couch HT.methodGet "otest-1" [] [] 
+            (protect syncRev) 
+            (H.RequestBodyBS B.empty)
     liftBase $ print res
 
-case_couchOut :: Assertion
-case_couchOut = do 
-    res <- runCouch "localhost" 5984 "" $ runResourceT $ couch 
-            HT.methodGet "" [] [] 
-            handlerJ 
-            (H.RequestBodyBS B.empty)
-    print res
 
-case_couchProtect :: Assertion
-case_couchProtect = do 
-    res <- runCouch "localhost" 5984 "" $ runResourceT $ couch 
-            HT.methodGet "" [] [] 
-            (protect handlerJ) 
-            (H.RequestBodyBS B.empty)
-    print res
-
-case_couchProtect404 :: Assertion
-case_couchProtect404 = do 
-    res <- runCouch "localhost" 5984 "non_exisi" $ runResourceT $ couch 
-            HT.methodGet "" [] [] 
-            (protect handlerJ) 
-            (H.RequestBodyBS B.empty)
-    print res
-
-case_couchGet :: Assertion
-case_couchGet = do 
-    res <- runCouch "localhost" 5984 "" $ couchGetT "" []
-    print res
+syncRev _s h _bsrc = return $ (B.tail . B.init . fromJust $ lookup "Etag" h)
 
 case_couchSource :: Assertion
 case_couchSource = do
-    request <- H.parseUrl "http://hackage.haskell.org/packages/archive/conduit/0.0.0/doc/html/Data-Conduit.html"
+    request <- H.parseUrl "http://localhost:5984"
     H.withManager $ \man -> do
          res <- H.http request handler man
          res $= CL.mapM print $$ CL.sinkNull
@@ -94,17 +65,5 @@ case_couchSource = do
 
     
 
-handlerJ :: ResourceIO m => H.ResponseConsumer m A.Value
-handlerJ _status _hdrs bsrc = bsrc $$ sinkParser A.json
-
-handlerJC :: ResourceIO m => Conduit B.ByteString m A.Value
-handlerJC = sequenceSink () $ \() ->
-    Emit () . return <$> (sinkParser A.json)
-
-couchGetT :: (MonadCouch m) => 
-       B.ByteString
-    -> HT.Query
-    -> m A.Value
-couchGetT p q = runResourceT $ couch HT.methodGet p [] q handlerJ 
-            (H.RequestBodyBS B.empty) 
+ 
 
