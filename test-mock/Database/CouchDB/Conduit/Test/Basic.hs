@@ -15,11 +15,15 @@ import Test.Framework.Providers.HUnit (testCase)
 import Test.HUnit (Assertion)
 
 import Control.Monad.Trans.Resource
+import           Control.Monad.Trans.Class (MonadTrans, lift)
 import Control.Monad.Base (liftBase)
 import Control.Exception (SomeException)
 import Control.Exception.Lifted (catch, throwIO)
+import Control.Applicative ((<$>), (<|>), optional, (*>), (<*), many)
 
 import Data.Conduit
+import qualified Data.Conduit.Binary as CB
+import qualified Data.Conduit.List as CL
 import Data.Conduit.Attoparsec
 import qualified Network.HTTP.Conduit as H
 import qualified Network.HTTP.Types as HT
@@ -34,12 +38,12 @@ import Database.CouchDB.Conduit
 
 tests :: Test
 tests = testGroup "Couch mock" [
---    testCase "Inside couch" case_couchIn,
---    testCase "Outside couch" case_couchOut,
-    testCase "Outside couch" case_couchGet,
-    testCase "Protect" case_couchProtect,
-    testCase "Protect" case_couchProtect404
+--    testCase "Outside couch" case_couchGet,
+--    testCase "Protect" case_couchProtect,
+--    testCase "Protect" case_couchProtect404
+    testCase "Protect" case_couchSource
     ]
+
 
 case_couchIn :: Assertion
 case_couchIn = runCouch "localhost" 5984 "" $ do
@@ -78,8 +82,24 @@ case_couchGet = do
     res <- runCouch "localhost" 5984 "" $ couchGetT "" []
     print res
 
+case_couchSource :: Assertion
+case_couchSource = do
+    request <- H.parseUrl "http://hackage.haskell.org/packages/archive/conduit/0.0.0/doc/html/Data-Conduit.html"
+    H.withManager $ \man -> do
+         res <- H.http request handler man
+         res $= CL.mapM print $$ CL.sinkNull
+         return ()
+  where
+    handler _ _ bsrc = return $ bsrc 
+
+    
+
 handlerJ :: ResourceIO m => H.ResponseConsumer m A.Value
 handlerJ _status _hdrs bsrc = bsrc $$ sinkParser A.json
+
+handlerJC :: ResourceIO m => Conduit B.ByteString m A.Value
+handlerJC = sequenceSink () $ \() ->
+    Emit () . return <$> (sinkParser A.json)
 
 couchGetT :: (MonadCouch m) => 
        B.ByteString

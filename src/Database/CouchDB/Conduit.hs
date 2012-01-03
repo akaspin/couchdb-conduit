@@ -4,15 +4,19 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 
 module Database.CouchDB.Conduit (
-    Path,
-    Revision,
+    -- * CouchDB Connection
+    DbPath,
     CouchConnection(..),
+    runCouch,
+    withCouchConnection,
     MonadCouch(..),
     CouchError(..),
+    
+    -- * Low-level API
+    DocPath,
+    Revision,
     couch,
-    protect,
-    runCouch,
-    withCouchConnection
+    protect
 ) where
 
 import Prelude hiding (catch)
@@ -20,12 +24,12 @@ import Prelude hiding (catch)
 -- control
 import Control.Monad.Trans.Reader (ReaderT, ask, runReaderT)
 import Control.Exception (Exception, SomeException)
-import Control.Exception.Lifted (catch, throwIO)
+import Control.Exception.Lifted (catch)
 import Control.Monad.Trans.Class (lift)
 import Control.Monad.Base (liftBase)
 
 -- conduit
-import Data.Conduit (ResourceIO, ResourceT, ($$))
+import Data.Conduit (ResourceIO, ResourceT, ($$), resourceThrow)
 import Data.Conduit.Attoparsec (sinkParser)
 
 -- networking
@@ -40,14 +44,20 @@ import qualified Data.ByteString.UTF8 as BU8 (toString)
 import qualified Data.Text as T
 import qualified Data.HashMap.Lazy as M (lookup)
 
--- | A path to a CouchDB Object.
+-- | A path to a CouchDB Database.
 -- 
---   /Note:/ In CouchDB database or path /can/ contain slashes. But, to work 
---   with such objects, path must be escaped.
-type Path = B.ByteString
+--   /Note:/ In CouchDB database name /can/ contain slashes. But, 
+--   to work with such objects, path must be escaped.
+type DbPath = B.ByteString
+
+-- | A path to a CouchDB Document within database.
+-- 
+--   /Note:/ In CouchDB database or document name /can/ contain slashes. But, 
+--   to work with such objects, path must be escaped.
+type DocPath = B.ByteString
 
 -- | Represents a revision of a CouchDB Document. 
-type Revision = T.Text
+type Revision = B.ByteString
 
 -- | Represents a single connection to CouchDB server. 
 --
@@ -57,7 +67,7 @@ data CouchConnection = CouchConnection {
       host      :: B.ByteString     -- ^ Hostname
     , port      :: Int              -- ^ Port
     , manager   :: H.Manager        -- ^ Manager
-    , dbname    :: Path             -- ^ Database name
+    , dbname    :: DbPath             -- ^ Database name
 }
 
 -- | A monad which allows access to the connection
@@ -81,9 +91,9 @@ instance Exception CouchError
 -- 
 --   Response passed to 'H.ResponseConsumer' unchanged. To protect response 
 --   from exceptions use 'protect'.
-couch :: (MonadCouch m) =>
+couch :: MonadCouch m =>
            HT.Method                -- ^ Method
-        -> Path                     -- ^ Path
+        -> DocPath                  -- ^ Path
         -> HT.RequestHeaders        -- ^ Headers
         -> HT.Query                 -- ^ Query args
         -> H.ResponseConsumer m b   -- ^ Response consumer
@@ -114,7 +124,7 @@ protect c st@(HT.Status 304 _) hdrs bsrc = c st hdrs bsrc
 protect _ (HT.Status sCode sMsg) _ bsrc = do
     v <- catch (bsrc $$ sinkParser json) 
                (\(_::SomeException) -> return Null)
-    liftBase $ throwIO $ CouchError (Just sCode) $ msg v
+    liftBase $ resourceThrow $ CouchError (Just sCode) $ msg v
   where 
     msg v = BU8.toString sMsg ++ reason v
     reason (Object v) = case M.lookup "reason" v of
@@ -139,7 +149,7 @@ protect _ (HT.Status sCode sMsg) _ bsrc = do
 runCouch :: ResourceIO m =>
        B.ByteString                 -- ^ Host
     -> Int                          -- ^ Port
-    -> Path                         -- ^ Database
+    -> DbPath                       -- ^ Database
     -> ReaderT CouchConnection m a  -- ^ CouchDB actions
     -> m a
 runCouch h p d = withCouchConnection h p d . runReaderT
@@ -154,7 +164,7 @@ runCouch h p d = withCouchConnection h p d . runReaderT
 withCouchConnection :: ResourceIO m =>
        B.ByteString                 -- ^ Host
     -> Int                          -- ^ Port
-    -> Path                         -- ^ Database 
+    -> DbPath                       -- ^ Database 
     -> (CouchConnection -> m a)     -- ^ Function to run
     -> m a
 withCouchConnection h p db f = 

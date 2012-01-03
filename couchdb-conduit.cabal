@@ -26,11 +26,12 @@ library
                    http-types,
                    text,
                    attoparsec-conduit,
-                   blaze-builder,
                    lifted-base,
                    unordered-containers
   ghc-options:      -Wall
-  exposed-modules:  Database.CouchDB.Conduit
+  exposed-modules:  
+                    Database.CouchDB.Conduit,
+                    Database.CouchDB.Conduit.Explicit
 
 test-suite test-mock
   type:            exitcode-stdio-1.0
