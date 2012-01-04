@@ -1,4 +1,6 @@
 {-# LANGUAGE OverloadedStrings #-}
+
+-- | Explicit methods for CouchDB documents.
 module Database.CouchDB.Conduit.Explicit (
     couchRev,
     couchGet,
@@ -12,13 +14,13 @@ import qualified Data.Text.Encoding as TE
 import qualified Data.HashMap.Lazy as M
 import qualified Data.Aeson as A
 
-import Data.Conduit (ResourceIO, runResourceT, ($$), resourceThrow)
-import Data.Conduit.Attoparsec (sinkParser)
+import Data.Conduit (runResourceT, resourceThrow)
 
 import qualified Network.HTTP.Conduit as H
 import Network.HTTP.Types as HT
 
 import Database.CouchDB.Conduit
+import Database.CouchDB.Conduit.Internal
 
 -- | Get Revision of a document. 
 couchRev :: MonadCouch m => 
@@ -37,7 +39,7 @@ couchGet :: (MonadCouch m) =>
     -> m A.Object
 couchGet p q = do
     res <- runResourceT $ couch HT.methodGet p [] q 
-            (protect syncJSON) 
+            (protect sinkJSON) 
             (H.RequestBodyBS B.empty)
     either resourceThrow return $ valToObj res
 
@@ -50,7 +52,7 @@ couchPut :: (MonadCouch m, A.ToJSON a) =>
      -> m Revision      
 couchPut p r q val = do
     res <- runResourceT $ couch HT.methodPut p (ifMatch r) q 
-            (protect syncJSON)
+            (protect sinkJSON)
             (H.RequestBodyLBS $ A.encode val)
     either resourceThrow return (valToObj res >>= objToRev)
   where 
@@ -64,12 +66,8 @@ couchDelete :: MonadCouch m =>
     -> m ()
 couchDelete p r = runResourceT $ couch HT.methodDelete p 
                [("rev", r)] []
-               (protect (\_ _ _ -> return ())) 
+               (protect sinkZero) 
                (H.RequestBodyBS B.empty)
-
--- | Basic consumer for json            
-syncJSON :: ResourceIO m => H.ResponseConsumer m A.Value
-syncJSON _status _hdrs bsrc = bsrc $$ sinkParser A.json
 
 -- | Convers a value to an object
 valToObj :: A.Value -> Either CouchError A.Object

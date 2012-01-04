@@ -31,4 +31,6 @@ library
   ghc-options:      -Wall
   exposed-modules:  
                     Database.CouchDB.Conduit,
+                    Database.CouchDB.Conduit.Db,
                     Database.CouchDB.Conduit.Explicit
+  other-modules:    Database.CouchDB.Conduit.Internal
