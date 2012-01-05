@@ -1,8 +1,8 @@
 -- | Database methods
-module Database.CouchDB.Conduit.Db (
-    couchPutDb,
-    couchPutDb',
-    couchDeleteDb
+module Database.CouchDB.Conduit.DB (
+    couchPutDB,
+    couchPutDB',
+    couchDeleteDB
 ) where
 
 import Prelude hiding (catch)
@@ -19,37 +19,37 @@ import Database.CouchDB.Conduit
 import Database.CouchDB.Conduit.Internal
 
 -- | Create CouchDB database.
-couchPutDb :: MonadCouch m =>
+couchPutDB :: MonadCouch m =>
        DbPath   -- ^ If you passed a database name to 'withCouchConnection',
                 --   'runCouch', or 'CouchConnection', the path should be
                 --   the empty string.  If you passed the empty string to
                 --   'CouchConnection', then the dbname should be used here.
     -> m ()
-couchPutDb p = runResourceT $ couch HT.methodPut p [] []
+couchPutDB p = runResourceT $ couch HT.methodPut p [] []
                     (protect sinkZero)
                     (H.RequestBodyBS B.empty)
 
 -- | Brute force version of couchPutDb. Create CouchDB database regardless 
 --   of presence. Catches 'CouchError' /412/.
-couchPutDb' :: MonadCouch m =>
+couchPutDB' :: MonadCouch m =>
        DbPath   -- ^ If you passed a database name to 'withCouchConnection',
                 --   'runCouch', or 'CouchConnection', the path should be
                 --   the empty string.  If you passed the empty string to
                 --   'CouchConnection', then the dbname should be used here.
     -> m ()
-couchPutDb' p = 
-    catch (couchPutDb p) handler
+couchPutDB' p = 
+    catch (couchPutDB p) handler
   where
     handler (CouchError (Just 412) _) = return ()
     handler e = resourceThrow e
 
 -- | Delete a database.
-couchDeleteDb :: MonadCouch m => 
+couchDeleteDB :: MonadCouch m => 
        DbPath   -- ^ If you passed a database name to 'withCouchConnection',
                 --   'runCouch', or 'CouchConnection', the path should be
                 --   the empty string.  If you passed the empty string to
                 --   'CouchConnection', then the dbname should be used here.
     -> m ()
-couchDeleteDb p = runResourceT $ couch HT.methodDelete p [] []
+couchDeleteDB p = runResourceT $ couch HT.methodDelete p [] []
                     (protect sinkZero)
                     (H.RequestBodyBS B.empty)

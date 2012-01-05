@@ -24,7 +24,7 @@ import qualified Network.HTTP.Conduit as H
 import qualified Network.HTTP.Types as HT
 
 import Database.CouchDB.Conduit
-import Database.CouchDB.Conduit.Db
+import Database.CouchDB.Conduit.DB
 import Database.CouchDB.Conduit.Explicit
 
 tests :: Test
@@ -92,8 +92,8 @@ passThrough = Conduit $ return PreparedConduit
 -- Boot
 case_bootStrap :: Assertion
 case_bootStrap =  runCouch "localhost" 9500 "cdbc_test" $ do
-    couchDeleteDb ""
-    couchPutDb ""
+    couchDeleteDB ""
+    couchPutDB ""
     mapM_ prepDoc ([1..5] :: [Int]) 
   where
     prepDoc n = do

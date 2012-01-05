@@ -11,9 +11,8 @@ maintainer:     Alexander Dorofeev <aka.spin@gmail.com>
 synopsis:       Couch DB client library using http-conduit and aeson
 
 library
-  hs-source-dirs:  src
-  build-depends:   
-                   base >= 4 && < 5,
+  hs-source-dirs:   src
+  build-depends:   base >= 4 && < 5,
                    monad-control,
                    conduit,
                    http-conduit,
@@ -30,17 +29,18 @@ library
                    unordered-containers,
                    attoparsec
   ghc-options:      -Wall
-  exposed-modules:  Database.CouchDB.Conduit,
-                    Database.CouchDB.Conduit.Db,
-                    Database.CouchDB.Conduit.Explicit
+  exposed-modules:  
+                    Database.CouchDB.Conduit,
+                    Database.CouchDB.Conduit.Explicit,
+                    Database.CouchDB.Conduit.DB
   other-modules:    Database.CouchDB.Conduit.Internal
 
 test-suite mock
   type:            exitcode-stdio-1.0
+  buildable:       False
   x-uses-tf:       true
   main-is:         Main.hs
-  build-depends:   
-                   base >= 4,
+  build-depends:   base >= 4,
                    HUnit >= 1.2 && < 2,
                    QuickCheck >= 2.4,
                    test-framework >= 0.4.1,
@@ -57,7 +57,29 @@ test-suite mock
                    transformers,
                    attoparsec-conduit,
                    attoparsec
-  ghc-options:     -Wall -rtsopts
+  ghc-options:     -Wall -rtsopts -threaded
   hs-source-dirs:  mock
   other-modules:   Database.CouchDB.Conduit.Mock.View
+
+test-suite test
+  type:            exitcode-stdio-1.0
+  x-uses-tf:       true
+  build-depends:   
+                   base >= 4,
+                   HUnit >= 1.2 && < 2,
+                   QuickCheck >= 2.4,
+                   test-framework >= 0.4.1,
+                   test-framework-quickcheck2,
+                   test-framework-hunit,
+                   couchdb-conduit,
+                   bytestring,
+                   aeson,
+                   transformers,
+                   utf8-string
+  ghc-options:     -Wall -rtsopts -threaded
+  hs-source-dirs:  test
+  main-is:         Main.hs
+  other-modules:   
+                   Database.CouchDB.Conduit.Test.Explicit,
+                   Database.CouchDB.Conduit.Test.Util
 

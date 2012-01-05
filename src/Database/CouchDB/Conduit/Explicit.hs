@@ -8,6 +8,8 @@ module Database.CouchDB.Conduit.Explicit (
     couchDelete
 ) where
 
+import Control.Monad.IO.Class (liftIO)
+
 import Data.Maybe (fromJust)
 import qualified Data.ByteString as B
 import qualified Data.Text.Encoding as TE
@@ -27,21 +29,35 @@ couchRev :: MonadCouch m =>
        DocPath 
     -> m Revision
 couchRev p = runResourceT $ couch HT.methodHead p [] [] 
-            (protect syncRev) 
+            (protect sinkRev) 
             (H.RequestBodyBS B.empty)
   where
-    syncRev _s h _bsrc = return $ B.tail . B.init . fromJust $ lookup "Etag" h
+    sinkRev _s h _bsrc = return $ B.tail . B.init . fromJust $ lookup "Etag" h
+
+---- | Load a single object from couch DB.
+--couchGet :: MonadCouch m => 
+--       DocPath      -- ^ Document path
+--    -> HT.Query     -- ^ Query
+--    -> m A.Object
+--couchGet p q = do
+--    res <- runResourceT $ couch HT.methodGet p [] q 
+--            (protect sinkJSON) 
+--            (H.RequestBodyBS B.empty)
+--    either resourceThrow return $ valToObj res
 
 -- | Load a single object from couch DB.
-couchGet :: (MonadCouch m) => 
+couchGet :: (MonadCouch m, A.FromJSON a) => 
        DocPath      -- ^ Document path
     -> HT.Query     -- ^ Query
-    -> m A.Object
+    -> m a
 couchGet p q = do
     res <- runResourceT $ couch HT.methodGet p [] q 
             (protect sinkJSON) 
             (H.RequestBodyBS B.empty)
-    either resourceThrow return $ valToObj res
+    case A.fromJSON res of
+        A.Error e -> resourceThrow $ CouchError Nothing 
+                        ("Error parsing json: " ++ e)
+        A.Success o -> return o
 
 -- | Put an object in Couch DB with revision, returning the new Revision.
 couchPut :: (MonadCouch m, A.ToJSON a) => 
@@ -65,7 +81,7 @@ couchDelete :: MonadCouch m =>
     -> Revision
     -> m ()
 couchDelete p r = runResourceT $ couch HT.methodDelete p 
-               [("rev", r)] []
+               [] [("rev", Just r)]
                (protect sinkZero) 
                (H.RequestBodyBS B.empty)
                
