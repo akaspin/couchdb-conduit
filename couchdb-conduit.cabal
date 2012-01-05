@@ -35,32 +35,6 @@ library
                     Database.CouchDB.Conduit.DB
   other-modules:    Database.CouchDB.Conduit.Internal
 
-test-suite mock
-  type:            exitcode-stdio-1.0
-  buildable:       False
-  x-uses-tf:       true
-  main-is:         Main.hs
-  build-depends:   base >= 4,
-                   HUnit >= 1.2 && < 2,
-                   QuickCheck >= 2.4,
-                   test-framework >= 0.4.1,
-                   test-framework-quickcheck2,
-                   test-framework-hunit,
-                   couchdb-conduit,
-                   aeson,
-                   utf8-string,
-                   transformers-base,
-                   conduit,
-                   http-types,
-                   http-conduit,
-                   bytestring,
-                   transformers,
-                   attoparsec-conduit,
-                   attoparsec
-  ghc-options:     -Wall -rtsopts -threaded
-  hs-source-dirs:  mock
-  other-modules:   Database.CouchDB.Conduit.Mock.View
-
 test-suite test
   type:            exitcode-stdio-1.0
   x-uses-tf:       true
@@ -75,7 +49,8 @@ test-suite test
                    bytestring,
                    aeson,
                    transformers,
-                   utf8-string
+                   utf8-string,
+                   lifted-base
   ghc-options:     -Wall -rtsopts -threaded
   hs-source-dirs:  test
   main-is:         Main.hs

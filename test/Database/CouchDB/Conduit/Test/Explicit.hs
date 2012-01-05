@@ -1,4 +1,4 @@
-{-# LANGUAGE OverloadedStrings #-} 
+{-# LANGUAGE OverloadedStrings, ScopedTypeVariables #-} 
 
 module Database.CouchDB.Conduit.Test.Explicit where
 
@@ -7,7 +7,9 @@ import Test.Framework.Providers.HUnit (testCase)
 import Test.HUnit (Assertion, (@=?))
 import Database.CouchDB.Conduit.Test.Util
 
+import Control.Exception.Lifted (bracket_)
 import Control.Monad.IO.Class (liftIO)
+import Control.Applicative ((<$>), (<*>), empty)
 
 import Data.Aeson
 import Data.ByteString.UTF8 (fromString)
@@ -21,36 +23,63 @@ tests = mutuallyExclusive $ testGroup "Explicit" [
     ]
     
 case_justPutGet :: Assertion
-case_justPutGet = do
-    setupDB "cdbc_test_basic"
+case_justPutGet = bracket_
+    (setupDB "cdbc_test_basic")
+    (tearDB "cdbc_test_basic") $ 
     runCouch "localhost" 5984 "cdbc_test_basic" $ do
-        rev <- couchPut "doc-just" "" [] $ object [ 
-                    "kind" .= ("doc" :: String),
-                    "intV" .= (1 :: Int), 
-                    "strV" .= ("1" :: String) ]
-        rev' <- couchPut "doc-just" rev [] $ object [ 
-                    "kind" .= ("doc" :: String),
-                    "intV" .= (2 :: Int), 
-                    "strV" .= ("3" :: String) ]
+        rev <- couchPut "doc-just" "" [] $ TestDoc "doc" 1 "1"
+        rev' <- couchPut "doc-just" rev [] $ TestDoc "doc" 2 "2"
         rev'' <- couchRev "doc-just"
         liftIO $ rev' @=? rev''
         couchDelete "doc-just" rev''
-    tearDB "cdbc_test_basic"
 
 case_massFlow :: Assertion
-case_massFlow = do
-    setupDB "cdbc_test_basic"
+case_massFlow = bracket_
+    (setupDB "cdbc_test_basic")
+    (tearDB "cdbc_test_basic") $ 
     runCouch "localhost" 5984 "cdbc_test_basic" $ do
         revs <- mapM (\n -> 
-            couchPut (docn n) "" [] $ object [ 
-                    "kind" .= ("doc" :: String),
-                    "intV" .= (n :: Int), 
-                    "strV" .= (show n :: String) ]) [1..100]
+                couchPut (docn n) "" [] $ TestDoc "doc" n $ show n
+            ) [1..100]
         revs' <- mapM (\n ->
             couchRev $ docn n) [1..100]
         liftIO $ revs @=? revs'
         mapM_ (\(n,r) ->
             couchDelete (docn n) r) $ zip [1..100] revs'
-    tearDB "cdbc_test_basic"
+  where
+    docn n = fromString $ "doc-" ++ show (n :: Int)    
+
+data TestDoc = TestDoc {
+    kind :: String,
+    intV :: Int,
+    strV :: String
+} deriving (Show, Eq)
+
+instance FromJSON TestDoc where
+   parseJSON (Object v) = TestDoc    <$>
+                          v .: "kind" <*>
+                          v .: "intV" <*>
+                          v .: "strV"
+   parseJSON _          = empty
+   
+instance ToJSON TestDoc where
+   toJSON (TestDoc k i s) = object ["kind" .= k, "intV" .= i, "strV" .= s]
+
+case_massIter :: Assertion
+case_massIter = bracket_
+    (setupDB "cdbc_test_basic")
+    (tearDB "cdbc_test_basic") $ 
+    runCouch "localhost" 5984 "cdbc_test_basic" $ 
+        mapM_ (\n -> do
+            let name = docn n 
+            let d = TestDoc "doc" n $ show n
+            rev <- couchPut name "" [] d
+            couchDelete (docn n) rev
+            rev' <- couchPut name "" [] d
+            rev'' <- couchPut name rev' [] d
+            (d' :: TestDoc) <- couchGet name []
+            liftIO $ d @=? d'
+            couchDelete (docn n) rev''
+         ) [1..100]
   where
     docn n = fromString $ "doc-" ++ show (n :: Int)    

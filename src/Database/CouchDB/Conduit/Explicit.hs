@@ -8,8 +8,6 @@ module Database.CouchDB.Conduit.Explicit (
     couchDelete
 ) where
 
-import Control.Monad.IO.Class (liftIO)
-
 import Data.Maybe (fromJust)
 import qualified Data.ByteString as B
 import qualified Data.Text.Encoding as TE
