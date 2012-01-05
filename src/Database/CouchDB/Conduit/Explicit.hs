@@ -68,7 +68,7 @@ couchDelete p r = runResourceT $ couch HT.methodDelete p
                [("rev", r)] []
                (protect sinkZero) 
                (H.RequestBodyBS B.empty)
-
+               
 -- | Convers a value to an object
 valToObj :: A.Value -> Either CouchError A.Object
 valToObj (A.Object o) = Right o

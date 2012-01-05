@@ -1,4 +1,4 @@
-
+-- | Database methods
 module Database.CouchDB.Conduit.Db (
     couchPutDb,
     couchPutDb',
@@ -6,7 +6,6 @@ module Database.CouchDB.Conduit.Db (
 ) where
 
 import Prelude hiding (catch)
-
 import Control.Exception.Lifted (catch)
 
 import qualified Data.ByteString as B

@@ -11,8 +11,8 @@ maintainer:     Alexander Dorofeev <aka.spin@gmail.com>
 synopsis:       Couch DB client library using http-conduit and aeson
 
 library
-  hs-source-dirs:   src
-  build-depends:    
+  hs-source-dirs:  src
+  build-depends:   
                    base >= 4 && < 5,
                    monad-control,
                    conduit,
@@ -27,10 +27,37 @@ library
                    text,
                    attoparsec-conduit,
                    lifted-base,
-                   unordered-containers
+                   unordered-containers,
+                   attoparsec
   ghc-options:      -Wall
-  exposed-modules:  
-                    Database.CouchDB.Conduit,
+  exposed-modules:  Database.CouchDB.Conduit,
                     Database.CouchDB.Conduit.Db,
                     Database.CouchDB.Conduit.Explicit
   other-modules:    Database.CouchDB.Conduit.Internal
+
+test-suite mock
+  type:            exitcode-stdio-1.0
+  x-uses-tf:       true
+  main-is:         Main.hs
+  build-depends:   
+                   base >= 4,
+                   HUnit >= 1.2 && < 2,
+                   QuickCheck >= 2.4,
+                   test-framework >= 0.4.1,
+                   test-framework-quickcheck2,
+                   test-framework-hunit,
+                   couchdb-conduit,
+                   aeson,
+                   utf8-string,
+                   transformers-base,
+                   conduit,
+                   http-types,
+                   http-conduit,
+                   bytestring,
+                   transformers,
+                   attoparsec-conduit,
+                   attoparsec
+  ghc-options:     -Wall -rtsopts
+  hs-source-dirs:  mock
+  other-modules:   Database.CouchDB.Conduit.Mock.View
+
