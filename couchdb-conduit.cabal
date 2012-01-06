@@ -33,11 +33,11 @@ library
   ghc-options:      -Wall
   exposed-modules:  
                     Database.CouchDB.Conduit,
+                    Database.CouchDB.Conduit.DB,
                     Database.CouchDB.Conduit.Explicit,
-                    Database.CouchDB.Conduit.DB
-  other-modules:    
-                    Database.CouchDB.Conduit.Internal,
-                    Database.CouchDB.Conduit.Generic
+                    Database.CouchDB.Conduit.Generic,
+                    Database.CouchDB.Conduit.View
+  other-modules:    Database.CouchDB.Conduit.Internal
 
 test-suite test
   type:            exitcode-stdio-1.0
@@ -55,11 +55,14 @@ test-suite test
                    transformers,
                    utf8-string,
                    lifted-base,
-                   syb
+                   syb,
+                   conduit,
+                   unordered-containers
   ghc-options:     -Wall -rtsopts -threaded
   hs-source-dirs:  test
   main-is:         Main.hs
   other-modules:   
                    Database.CouchDB.Conduit.Test.Explicit,
-                   Database.CouchDB.Conduit.Test.Util
+                   Database.CouchDB.Conduit.Test.Util,
+                   Database.CouchDB.Conduit.Test.View
 

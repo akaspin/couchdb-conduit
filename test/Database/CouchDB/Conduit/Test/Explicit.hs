@@ -1,4 +1,4 @@
-{-# LANGUAGE OverloadedStrings, ScopedTypeVariables #-} 
+{-# LANGUAGE OverloadedStrings #-} 
 
 module Database.CouchDB.Conduit.Test.Explicit where
 
