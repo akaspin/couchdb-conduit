@@ -10,8 +10,6 @@ module Database.CouchDB.Conduit.Explicit (
 
 import Data.Maybe (fromJust)
 import qualified Data.ByteString as B
-import qualified Data.Text.Encoding as TE
-import qualified Data.HashMap.Lazy as M
 import qualified Data.Aeson as A
 
 import Data.Conduit (runResourceT, resourceThrow)
@@ -31,17 +29,6 @@ couchRev p = runResourceT $ couch HT.methodHead p [] []
             (H.RequestBodyBS B.empty)
   where
     sinkRev _s h _bsrc = return $ B.tail . B.init . fromJust $ lookup "Etag" h
-
----- | Load a single object from couch DB.
---couchGet :: MonadCouch m => 
---       DocPath      -- ^ Document path
---    -> HT.Query     -- ^ Query
---    -> m A.Object
---couchGet p q = do
---    res <- runResourceT $ couch HT.methodGet p [] q 
---            (protect sinkJSON) 
---            (H.RequestBodyBS B.empty)
---    either resourceThrow return $ valToObj res
 
 -- | Load a single object from couch DB.
 couchGet :: (MonadCouch m, A.FromJSON a) => 
@@ -68,7 +55,7 @@ couchPut p r q val = do
     res <- runResourceT $ couch HT.methodPut p (ifMatch r) q 
             (protect sinkJSON)
             (H.RequestBodyLBS $ A.encode val)
-    either resourceThrow return (valToObj res >>= objToRev)
+    either resourceThrow return (valToRev res)
   where 
     ifMatch "" = []
     ifMatch rv = [("If-Match", rv)]
@@ -82,15 +69,5 @@ couchDelete p r = runResourceT $ couch HT.methodDelete p
                [] [("rev", Just r)]
                (protect sinkZero) 
                (H.RequestBodyBS B.empty)
-               
--- | Convers a value to an object
-valToObj :: A.Value -> Either CouchError A.Object
-valToObj (A.Object o) = Right o
-valToObj _ = Left $ CouchError Nothing "Couch DB did not return an object"
-
--- | Converts an object to a revision
-objToRev :: A.Object -> Either CouchError Revision
-objToRev o = case M.lookup "rev" o of
-    (Just (A.String r)) -> Right $ TE.encodeUtf8 r
-    _  -> Left $ CouchError Nothing "unable to find revision"  
+ 
 

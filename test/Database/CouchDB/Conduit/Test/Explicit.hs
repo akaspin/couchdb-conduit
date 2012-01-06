@@ -77,7 +77,7 @@ case_massIter = bracket_
             couchDelete (docn n) rev
             rev' <- couchPut name "" [] d
             rev'' <- couchPut name rev' [] d
-            (d' :: TestDoc) <- couchGet name []
+            d' <- couchGet name []
             liftIO $ d @=? d'
             couchDelete (docn n) rev''
          ) [1..100]

@@ -6,6 +6,8 @@
 module Database.CouchDB.Conduit (
     -- * CouchDB Connection
     DbPath,
+    DocPath,
+    Revision,
     CouchConnection(..),
     runCouch,
     withCouchConnection,
@@ -13,8 +15,6 @@ module Database.CouchDB.Conduit (
     CouchError(..),
     
     -- * Low-level API
-    DocPath,
-    Revision,
     couch,
     protect
 ) where

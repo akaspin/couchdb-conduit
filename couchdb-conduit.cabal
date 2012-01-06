@@ -12,7 +12,8 @@ synopsis:       Couch DB client library using http-conduit and aeson
 
 library
   hs-source-dirs:   src
-  build-depends:   base >= 4 && < 5,
+  build-depends:   
+                   base >= 4 && < 5,
                    monad-control,
                    conduit,
                    http-conduit,
@@ -27,13 +28,16 @@ library
                    attoparsec-conduit,
                    lifted-base,
                    unordered-containers,
-                   attoparsec
+                   attoparsec,
+                   syb
   ghc-options:      -Wall
   exposed-modules:  
                     Database.CouchDB.Conduit,
                     Database.CouchDB.Conduit.Explicit,
                     Database.CouchDB.Conduit.DB
-  other-modules:    Database.CouchDB.Conduit.Internal
+  other-modules:    
+                    Database.CouchDB.Conduit.Internal,
+                    Database.CouchDB.Conduit.Generic
 
 test-suite test
   type:            exitcode-stdio-1.0
@@ -50,7 +54,8 @@ test-suite test
                    aeson,
                    transformers,
                    utf8-string,
-                   lifted-base
+                   lifted-base,
+                   syb
   ghc-options:     -Wall -rtsopts -threaded
   hs-source-dirs:  test
   main-is:         Main.hs
