@@ -19,7 +19,6 @@ tests :: Test
 tests = mutuallyExclusive $ testGroup "View" [
     testCase "Basic" case_basicView,
     testCase "Basic with reduce" case_basicViewReduce
---    testCase "Just put-delete" case_massFlow
     ]
 
 case_basicView :: Assertion

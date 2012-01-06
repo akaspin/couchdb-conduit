@@ -19,9 +19,20 @@ import Database.CouchDB.Conduit.Explicit
 tests :: Test
 tests = mutuallyExclusive $ testGroup "Explicit" [
     testCase "Just put-delete" case_justPutGet,
-    testCase "Just put-delete" case_massFlow
+    testCase "Just put-delete" case_massFlow,
+    testCase "Just put-delete" case_massIter
     ]
     
+data TestDoc = TestDoc { kind :: String, intV :: Int, strV :: String } 
+    deriving (Show, Eq)
+
+instance FromJSON TestDoc where
+   parseJSON (Object v) = TestDoc <$> v .: "kind" <*> v .: "intV" <*> v .: "strV"
+   parseJSON _          = empty
+   
+instance ToJSON TestDoc where
+   toJSON (TestDoc k i s) = object ["kind" .= k, "intV" .= i, "strV" .= s]
+
 case_justPutGet :: Assertion
 case_justPutGet = bracket_
     (setupDB "cdbc_test_basic")
@@ -49,21 +60,6 @@ case_massFlow = bracket_
   where
     docn n = fromString $ "doc-" ++ show (n :: Int)    
 
-data TestDoc = TestDoc {
-    kind :: String,
-    intV :: Int,
-    strV :: String
-} deriving (Show, Eq)
-
-instance FromJSON TestDoc where
-   parseJSON (Object v) = TestDoc    <$>
-                          v .: "kind" <*>
-                          v .: "intV" <*>
-                          v .: "strV"
-   parseJSON _          = empty
-   
-instance ToJSON TestDoc where
-   toJSON (TestDoc k i s) = object ["kind" .= k, "intV" .= i, "strV" .= s]
 
 case_massIter :: Assertion
 case_massIter = bracket_
@@ -75,8 +71,8 @@ case_massIter = bracket_
             let d = TestDoc "doc" n $ show n
             rev <- couchPut name "" [] d
             couchDelete (docn n) rev
-            rev' <- couchPut name "" [] d
-            rev'' <- couchPut name rev' [] d
+            _ <- couchPut name "" [] d
+            rev'' <- couchPut' name [] d
             d' <- couchGet name []
             liftIO $ d @=? d'
             couchDelete (docn n) rev''

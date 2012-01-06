@@ -1,17 +1,21 @@
-{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE OverloadedStrings, ScopedTypeVariables #-}
 
 -- | Explicit methods for CouchDB documents.
 module Database.CouchDB.Conduit.Explicit (
     couchRev,
     couchGet,
     couchPut,
+    couchPut',
     couchDelete
 ) where
+
+import Prelude hiding (catch)
+
+import Control.Exception.Lifted (catch)
 
 import Data.Maybe (fromJust)
 import qualified Data.ByteString as B
 import qualified Data.Aeson as A
-
 import Data.Conduit (runResourceT, resourceThrow)
 
 import qualified Network.HTTP.Conduit as H
@@ -59,6 +63,19 @@ couchPut p r q val = do
   where 
     ifMatch "" = []
     ifMatch rv = [("If-Match", rv)]
+
+-- | Brute force version of 'couchPut'.
+couchPut' :: (MonadCouch m, A.ToJSON a) => 
+        DocPath     -- ^ Document path.
+     -> HT.Query    -- ^ Query arguments.
+     -> a           -- ^ The object to store.
+     -> m Revision      
+couchPut' p q val = do
+    rev <- catch (couchRev p) handler404
+    couchPut p rev q val
+  where 
+    handler404 (CouchError (Just 404) _) = return ""
+    handler404 e = resourceThrow e
 
 -- | Delete the given revision of the object.    
 couchDelete :: MonadCouch m => 
