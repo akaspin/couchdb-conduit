@@ -10,6 +10,7 @@ import Control.Applicative ((<|>))
 import qualified Data.ByteString as B
 import qualified Data.Aeson as A
 import Data.Attoparsec
+import Data.Attoparsec.Combinator
 
 import Data.Conduit
 import qualified Data.Conduit.Attoparsec as CA
@@ -65,9 +66,11 @@ commaOrClose = do
 -- determine view
 viewStart :: Parser Bool
 viewStart = do
-    _ <- string "{\"total_rows\":"
-    skipWhile (\x -> x >= 48 && x <= 57)
-    _ <- string ",\"offset\":"
-    skipWhile (\x -> x >= 48 && x <= 57)
-    _ <- string ",\"rows\":["
+    _ <- string "{" 
+    _ <- option "" $ string "\"total_rows\":"
+    option () $ skipWhile (\x -> x >= 48 && x <= 57)
+    _ <- option "" $ string ",\"offset\":"
+    option () $ skipWhile (\x -> x >= 48 && x <= 57)
+    _ <- option "" $ string ","
+    _ <- string "\"rows\":["
     (string "]}" >> return False) <|> return True
