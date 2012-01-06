@@ -1,33 +1,46 @@
-{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE OverloadedStrings, ScopedTypeVariables #-}
+
 -- | Generic methods for CouchDB documents
-module Database.CouchDB.Conduit.Generic where
+module Database.CouchDB.Conduit.Generic (
+    couchGet,
+    couchPut,
+    couchPut',
+    couchRev,
+    couchDelete
+) where
 
-import Data.ByteString as B
-import Data.Generics (Data)
-import Data.Conduit (runResourceT, resourceThrow)
-import qualified Data.Aeson as A
-import qualified Data.Aeson.Generic as AG
+import              Prelude hiding (catch)
 
-import qualified Network.HTTP.Conduit as H
-import qualified Network.HTTP.Types as HT
+import              Control.Exception.Lifted (catch)
+import              Control.Monad.Trans.Class (lift)
 
-import Database.CouchDB.Conduit
-import Database.CouchDB.Conduit.Internal
+import              Data.ByteString as B
+import              Data.Generics (Data)
+import qualified    Data.Aeson as A
+import qualified    Data.Aeson.Generic as AG
+import              Data.Conduit (runResourceT, resourceThrow, ($$))
+import              Data.Conduit.Attoparsec as CA
+
+import qualified    Network.HTTP.Conduit as H
+import qualified    Network.HTTP.Types as HT
+
+import              Database.CouchDB.Conduit
+import              Database.CouchDB.Conduit.Internal.Doc
+import              Database.CouchDB.Conduit.Internal.Parser
 
 -- | Load a single object from couch DB.
 couchGet :: (MonadCouch m, Data a) => 
        DocPath      -- ^ Document path
     -> HT.Query     -- ^ Query
     -> m (Revision, a)
-couchGet p q = do
-    res <- runResourceT $ couch HT.methodGet p [] q 
-            (protect sinkJSON) 
-            (H.RequestBodyBS B.empty)
-    rev <- either resourceThrow return $ valToRev res
-    case AG.fromJSON res of
-        A.Error e -> resourceThrow $ CouchError Nothing 
+couchGet p q = runResourceT $ do
+    H.Response _ _ bsrc <- couch HT.methodGet p [] q 
+            (H.RequestBodyBS B.empty) protect'
+    j <- bsrc $$ CA.sinkParser A.json
+    case AG.fromJSON j of
+        A.Error e -> lift $ resourceThrow $ CouchError Nothing 
                         ("Error parsing json: " ++ e)
-        A.Success o -> return (rev, o)
+        A.Success o -> return o
         
 -- | Put an object in Couch DB with revision, returning the new Revision.
 couchPut :: (MonadCouch m, Data a) => 
@@ -36,11 +49,24 @@ couchPut :: (MonadCouch m, Data a) =>
      -> HT.Query    -- ^ Query arguments.
      -> a           -- ^ The object to store.
      -> m Revision      
-couchPut p r q val = do
-    res <- runResourceT $ couch HT.methodPut p (ifMatch r) q 
-            (protect sinkJSON)
-            (H.RequestBodyLBS $ AG.encode val)
-    either resourceThrow return (valToRev res)
+couchPut p r q val = runResourceT $  do
+    H.Response _ _ bsrc <- couch HT.methodPut p (ifMatch r) q 
+            (H.RequestBodyLBS $ AG.encode val) protect'
+    j <- bsrc $$ CA.sinkParser A.json
+    either (lift . resourceThrow) return (valToRev j)
   where 
     ifMatch "" = []
     ifMatch rv = [("If-Match", rv)]
+    
+-- | Brute force version of 'couchPut'.
+couchPut' :: (MonadCouch m, Data a) => 
+        DocPath     -- ^ Document path.
+     -> HT.Query    -- ^ Query arguments.
+     -> a           -- ^ The object to store.
+     -> m Revision      
+couchPut' p q val = do
+    rev <- catch (couchRev p) handler404
+    couchPut p rev q val
+  where 
+    handler404 (CouchError (Just 404) _) = return ""
+    handler404 e = resourceThrow e

@@ -16,7 +16,6 @@ import qualified Network.HTTP.Conduit as H
 import qualified Network.HTTP.Types as HT
 
 import Database.CouchDB.Conduit
-import Database.CouchDB.Conduit.Internal
 
 -- | Create CouchDB database.
 couchPutDB :: MonadCouch m =>
@@ -26,8 +25,8 @@ couchPutDB :: MonadCouch m =>
                 --   'CouchConnection', then the dbname should be used here.
     -> m ()
 couchPutDB p = runResourceT $ couch HT.methodPut p [] []
-                    (protect sinkZero)
-                    (H.RequestBodyBS B.empty)
+                    (H.RequestBodyBS B.empty) protect'
+                    >> return ()
 
 -- | Brute force version of couchPutDb. Create CouchDB database regardless 
 --   of presence. Catches 'CouchError' /412/.
@@ -51,5 +50,5 @@ couchDeleteDB :: MonadCouch m =>
                 --   'CouchConnection', then the dbname should be used here.
     -> m ()
 couchDeleteDB p = runResourceT $ couch HT.methodDelete p [] []
-                    (protect sinkZero)
-                    (H.RequestBodyBS B.empty)
+                    (H.RequestBodyBS B.empty) protect'
+                    >> return ()

@@ -16,7 +16,8 @@ module Database.CouchDB.Conduit (
     
     -- * Low-level API
     couch,
-    protect
+    protect,
+    protect'
 ) where
 
 import Prelude hiding (catch)
@@ -29,7 +30,8 @@ import Control.Monad.Trans.Class (lift)
 import Control.Monad.Base (liftBase)
 
 -- conduit
-import Data.Conduit (ResourceIO, ResourceT, ($$), resourceThrow)
+import Data.Conduit (ResourceIO, ResourceT, BufferedSource, 
+                    ($$), resourceThrow)
 import Data.Conduit.Attoparsec (sinkParser)
 
 -- networking
@@ -88,18 +90,17 @@ instance Exception CouchError
 --   around 'H.http'.  Most of the time you should use one of the other access 
 --   functions, but this function is needed for example to write and read 
 --   attachments that are not in JSON format.
--- 
---   Response passed to 'H.ResponseConsumer' unchanged. To protect response 
---   from exceptions use 'protect'.
 couch :: MonadCouch m =>
-           HT.Method                -- ^ Method
-        -> DocPath                  -- ^ Path
-        -> HT.RequestHeaders        -- ^ Headers
-        -> HT.Query                 -- ^ Query args
-        -> H.ResponseConsumer m b   -- ^ Response consumer
-        -> H.RequestBody m
-        -> ResourceT m b
-couch meth path hdrs qs cons reqBody = do
+       HT.Method                -- ^ Method
+    -> DocPath                  -- ^ Path
+    -> HT.RequestHeaders        -- ^ Headers
+    -> HT.Query                 -- ^ Query args
+    -> H.RequestBody m          -- ^ Request body
+    -> (H.Response (BufferedSource m B.ByteString)   
+        -> ResourceT m (H.Response (BufferedSource m B.ByteString)))
+                                -- ^ Protect function. See 'protect'
+    -> ResourceT m (H.Response (BufferedSource m B.ByteString))
+couch meth path hdrs qs reqBody protectFn = do
     conn <- lift couchConnection
     let req = H.def 
             { H.method          = meth
@@ -109,29 +110,42 @@ couch meth path hdrs qs cons reqBody = do
             , H.path            = B.intercalate "/" . filter (/="") $ 
                                         [dbname conn, path]
             , H.queryString     = HT.renderQuery False qs
-            , H.requestBody     = reqBody }
-    H.http req cons (manager conn)
+            , H.requestBody     = reqBody
+            , H.checkStatus = const . const $ Nothing }
+    res <- H.http req (manager conn)
+    protectFn res 
 
--- | Protect response from typical errors like 404, 406 e.t.c. Only responses 
---   with codes 200, 201, 202 and 304 are passed. 
-protect :: ResourceIO m => 
-       H.ResponseConsumer m b
-    -> H.ResponseConsumer m b
-protect c st@(HT.Status 200 _) hdrs bsrc = c st hdrs bsrc
-protect c st@(HT.Status 201 _) hdrs bsrc = c st hdrs bsrc
-protect c st@(HT.Status 202 _) hdrs bsrc = c st hdrs bsrc
-protect c st@(HT.Status 304 _) hdrs bsrc = c st hdrs bsrc
-protect _ (HT.Status sCode sMsg) _ bsrc = do
-    v <- catch (bsrc $$ sinkParser json) 
-               (\(_::SomeException) -> return Null)
-    liftBase $ resourceThrow $ CouchError (Just sCode) $ msg v
-  where 
-    msg v = BU8.toString sMsg ++ reason v
-    reason (Object v) = case M.lookup "reason" v of
-            Just (String t) -> ": " ++ T.unpack t
-            _                 -> ""
-    reason _ = []
+-- | Protect 'H.Response' from bad status codes. If status code in list 
+--   of status codes - just return response. Otherwise - throw 'CouchError'.
+--   
+--   Instead 'H.checkStatus', 'protect' parses CouchDB response body JSON and
+--   extract \"reason\" message.
+--   
+--   To protect from typical errors use 'protect''.
+protect :: MonadCouch m => 
+       [Int]                                        -- ^ Good codes
+    -> H.Response (BufferedSource m B.ByteString)   -- ^ Response
+    -> ResourceT m (H.Response (BufferedSource m B.ByteString))
+protect goodCodes ~resp@(H.Response (HT.Status sc sm) _ bsrc)  
+    | sc `elem` goodCodes = return resp
+    | otherwise = do
+        v <- catch (bsrc $$ sinkParser json)
+                   (\(_::SomeException) -> return Null)
+        liftBase $ resourceThrow $ CouchError (Just sc) $ msg v
+        where 
+        msg v = BU8.toString sm ++ reason v
+        reason (Object v) = case M.lookup "reason" v of
+                Just (String t) -> ": " ++ T.unpack t
+                _                 -> ""
+        reason _ = []
 
+-- | Protect from typical status codes: 200, 201, 202 and 304. See 'protect'
+--   fo details.       
+protect' :: MonadCouch m => 
+       H.Response (BufferedSource m B.ByteString)   -- ^ Response
+    -> ResourceT m (H.Response (BufferedSource m B.ByteString))
+protect' = protect [200, 201, 202, 304]
+       
 -- | Run a sequence of CouchDB actions.
 --
 --   The functions below to access CouchDB require a 'MonadCouch' instance to 
@@ -168,4 +182,5 @@ withCouchConnection :: ResourceIO m =>
     -> (CouchConnection -> m a)     -- ^ Function to run
     -> m a
 withCouchConnection h p db f = 
+--     H.withManager $ \m -> f $ CouchConnection h p m db
      H.withManager $ \m -> lift $ f $ CouchConnection h p m db

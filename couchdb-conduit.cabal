@@ -6,7 +6,7 @@ stability:      Experimental
 category:       Database, Conduit
 license:        BSD3
 license-file:   LICENSE
-author:         John Lenz <lenz@math.uic.edu>, Alexander Dorofeev <aka.spin@gmail.com>
+author:         Alexander Dorofeev <aka.spin@gmail.com>, John Lenz <lenz@math.uic.edu>
 maintainer:     Alexander Dorofeev <aka.spin@gmail.com>
 synopsis:       Couch DB client library using http-conduit and aeson
 
@@ -14,21 +14,20 @@ library
   hs-source-dirs:   src
   build-depends:   
                    base >= 4 && < 5,
-                   monad-control,
-                   conduit,
-                   http-conduit,
-                   bytestring,
-                   utf8-string,
-                   transformers,
-                   transformers-base,
-                   case-insensitive,
-                   aeson,
-                   http-types,
-                   text,
-                   attoparsec-conduit,
-                   lifted-base,
-                   unordered-containers,
-                   attoparsec,
+                   conduit >= 0.0.0.2 && < 0.1,
+                   attoparsec >= 0.8 && < 0.11,
+                   attoparsec-conduit >= 0.0 && < 0.1,
+                   http-conduit >= 1.1.0.1 && < 1.2,
+                   http-types >= 0.6 && < 0.7,
+                   monad-control >= 0.3 && < 0.4,
+                   transformers >= 0.2 && < 0.3,
+                   transformers-base >= 0.4.1 && < 0.5,
+                   lifted-base >= 0.1 && < 0.2,
+                   bytestring >= 0.9 && < 0.10,
+                   utf8-string >= 0.3 && < 0.4,
+                   aeson >= 0.5 && < 0.6,
+                   text >= 0.11 && < 0.12,
+                   unordered-containers >= 0.1 && < 0.2,
                    syb
   ghc-options:      -Wall
   exposed-modules:  
@@ -37,7 +36,9 @@ library
                     Database.CouchDB.Conduit.Explicit,
                     Database.CouchDB.Conduit.Generic,
                     Database.CouchDB.Conduit.View
-  other-modules:    Database.CouchDB.Conduit.Internal
+  other-modules:    
+                    Database.CouchDB.Conduit.Internal.Doc,
+                    Database.CouchDB.Conduit.Internal.Parser
 
 test-suite test
   type:            exitcode-stdio-1.0
@@ -57,7 +58,9 @@ test-suite test
                    lifted-base,
                    syb,
                    conduit,
-                   unordered-containers
+                   unordered-containers,
+                   http-types,
+                   http-conduit
   ghc-options:     -Wall -rtsopts -threaded
   hs-source-dirs:  test
   main-is:         Main.hs

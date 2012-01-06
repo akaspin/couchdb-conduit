@@ -27,10 +27,11 @@ couchView :: MonadCouch m =>
     -> HT.Query             -- ^ Query
     -> Sink A.Object m a    -- ^ Sink
     -> m a
-couchView designDocName viewName q sink = 
-    runResourceT $ couch HT.methodGet fullPath [] q 
-        (\_ _ bsrc -> bsrc $= conduitCouchView $$ sink)
-        (H.RequestBodyBS B.empty)
+couchView designDocName viewName q sink = runResourceT $ do
+    H.Response _ _ bsrc <-  couch HT.methodGet fullPath [] q 
+        -- (\_ _ bsrc -> bsrc $= conduitCouchView $$ sink)
+        (H.RequestBodyBS B.empty) protect'
+    bsrc $= conduitCouchView $$ sink
   where
     fullPath = B.concat ["_design/", designDocName, "/_view/", viewName]
 

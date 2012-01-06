@@ -18,9 +18,9 @@ import Database.CouchDB.Conduit.Explicit
 
 tests :: Test
 tests = mutuallyExclusive $ testGroup "Explicit" [
-    testCase "Just put-delete" case_justPutGet,
-    testCase "Just put-delete" case_massFlow,
-    testCase "Just put-delete" case_massIter
+    testCase "Just put-get-delete" case_justPutGet,
+    testCase "Mass flow" case_massFlow,
+    testCase "Mass Iter" case_massIter
     ]
     
 data TestDoc = TestDoc { kind :: String, intV :: Int, strV :: String } 
@@ -52,9 +52,11 @@ case_massFlow = bracket_
         revs <- mapM (\n -> 
                 couchPut (docn n) "" [] $ TestDoc "doc" n $ show n
             ) [1..100]
+        liftIO $ length revs @=? 100
         revs' <- mapM (\n ->
             couchRev $ docn n) [1..100]
         liftIO $ revs @=? revs'
+        liftIO $ length revs' @=? 100
         mapM_ (\(n,r) ->
             couchDelete (docn n) r) $ zip [1..100] revs'
   where
