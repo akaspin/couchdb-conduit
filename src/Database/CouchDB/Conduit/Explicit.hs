@@ -21,6 +21,7 @@ import              Control.Monad.Trans.Class (lift)
 
 import qualified    Data.ByteString as B
 import qualified    Data.Aeson as A
+import qualified    Data.Text.Encoding as TE (encodeUtf8)
 import              Data.Conduit (runResourceT, resourceThrow, ($$))
 import qualified    Data.Conduit.Attoparsec as CA
 
@@ -31,19 +32,20 @@ import              Database.CouchDB.Conduit
 import              Database.CouchDB.Conduit.Internal.Doc
 import              Database.CouchDB.Conduit.Internal.Parser
 
--- | Load a single object from couch DB.
+-- | Load a single object with 'Revision' from couch DB.
 couchGet :: (MonadCouch m, A.FromJSON a) => 
        DocPath      -- ^ Document path
     -> HT.Query     -- ^ Query
-    -> m a
+    -> m (Revision, a)
 couchGet p q = runResourceT $ do
     H.Response _ _ bsrc <- couch HT.methodGet p [] q 
             (H.RequestBodyBS B.empty) protect'
     j <- bsrc $$ CA.sinkParser A.json
+    A.String r <- lift $ extractField "_rev" j
     case A.fromJSON j of
         A.Error e -> lift $ resourceThrow $ CouchError Nothing 
                         ("Error parsing json: " ++ e)
-        A.Success o -> return o
+        A.Success o -> return (TE.encodeUtf8 r, o)
 
 -- | Put an object in Couch DB with revision, returning the new Revision.
 couchPut :: (MonadCouch m, A.ToJSON a) => 
@@ -74,4 +76,7 @@ couchPut' p q val = do
     handler404 (CouchError (Just 404) _) = return ""
     handler404 e = resourceThrow e
 
+------------------------------------------------------------------------------
+-- View conduit
+------------------------------------------------------------------------------
 

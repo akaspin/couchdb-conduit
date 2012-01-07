@@ -1,8 +1,9 @@
 {-# LANGUAGE OverloadedStrings #-} 
+{-# LANGUAGE DeriveDataTypeable #-} 
 
 {-# OPTIONS_GHC -fno-warn-unused-binds #-}
 
-module Database.CouchDB.Conduit.Test.Explicit (tests) where
+module Database.CouchDB.Conduit.Test.Generic (tests) where
 
 import Test.Framework (testGroup, mutuallyExclusive, Test)
 import Test.Framework.Providers.HUnit (testCase)
@@ -11,34 +12,26 @@ import Database.CouchDB.Conduit.Test.Util
 
 import Control.Exception.Lifted (bracket_)
 import Control.Monad.IO.Class (liftIO)
-import Control.Applicative ((<$>), (<*>), empty)
 
 import Data.ByteString (ByteString)
-import Data.Aeson
+import Data.Generics (Data, Typeable)
 import Data.ByteString.UTF8 (fromString)
 import Database.CouchDB.Conduit
-import Database.CouchDB.Conduit.Explicit
+import Database.CouchDB.Conduit.Generic
 
 tests :: Test
-tests = mutuallyExclusive $ testGroup "Explicit" [
+tests = mutuallyExclusive $ testGroup "Generic" [
     testCase "Just put-get-delete" case_justPutGet,
     testCase "Mass flow" case_massFlow,
     testCase "Mass Iter" case_massIter
     ]
     
 data TestDoc = TestDoc { kind :: String, intV :: Int, strV :: String } 
-    deriving (Show, Eq)
-
-instance FromJSON TestDoc where
-   parseJSON (Object v) = TestDoc <$> v .: "kind" <*> v .: "intV" <*> v .: "strV"
-   parseJSON _          = empty
-   
-instance ToJSON TestDoc where
-   toJSON (TestDoc k i s) = object ["kind" .= k, "intV" .= i, "strV" .= s]
+    deriving (Show, Eq, Data, Typeable)
 
 case_justPutGet :: Assertion
 case_justPutGet = bracket_
-    setup teardown $
+    setup teardown $ 
     runCouch "localhost" 5984 dbName $ do
         rev <- couchPut "doc-just" "" [] $ TestDoc "doc" 1 "1"
         rev' <- couchPut "doc-just" rev [] $ TestDoc "doc" 2 "2"
@@ -48,7 +41,7 @@ case_justPutGet = bracket_
 
 case_massFlow :: Assertion
 case_massFlow = bracket_
-    setup teardown $
+    setup teardown $ 
     runCouch "localhost" 5984 dbName $ do
         revs <- mapM (\n -> 
                 couchPut (docn n) "" [] $ TestDoc "doc" n $ show n
@@ -66,7 +59,7 @@ case_massFlow = bracket_
 
 case_massIter :: Assertion
 case_massIter = bracket_
-    setup teardown $
+    setup teardown $ 
     runCouch "localhost" 5984 dbName $ 
         mapM_ (\n -> do
             let name = docn n 
@@ -80,7 +73,7 @@ case_massIter = bracket_
             couchDelete (docn n) rev''
          ) [1..100]
   where
-    docn n = fromString $ "doc-" ++ show (n :: Int) 
+    docn n = fromString $ "doc-" ++ show (n :: Int)
     
 setup :: IO ()
 setup = setupDB dbName
@@ -88,4 +81,4 @@ teardown :: IO ()
 teardown = tearDB dbName
 
 dbName :: ByteString
-dbName = "cdbc_test_explicit"   
+dbName = "cdbc_test_generic"

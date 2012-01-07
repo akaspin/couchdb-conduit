@@ -72,7 +72,10 @@ instance Default CouchDesignDoc where
     def = CouchDesignDoc { language = "javascript" ,
                            views = Map.empty }
     
--- | Helper for put new views in design documents.  
+-- | Helper for put new views in design documents. 
+--
+--   /Cauntion/ Current implementation kill all other info except views. Use 
+--   wise.
 couchViewPut :: MonadCouch m =>
        DocPath              -- ^ Design document
     -> DocPath              -- ^ View name
@@ -92,9 +95,6 @@ couchViewPut designDocName viewName lang mapFn reduceFn = do
     constructView = let s = Map.singleton "map" mapFn in
         maybe s (\f -> Map.insert "reduce" f s) reduceFn                          
             
-
-
-
 
 -----------------------------------------------------------------------------
 -- Internal Parser conduit
