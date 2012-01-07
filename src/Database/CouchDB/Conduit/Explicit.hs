@@ -56,7 +56,7 @@ couchPut p r q val = runResourceT $ do
     H.Response _ _ bsrc <- couch HT.methodPut p (ifMatch r) q 
             (H.RequestBodyLBS $ A.encode val) protect'
     j <- bsrc $$ CA.sinkParser A.json
-    either (lift . resourceThrow) return (valToRev j)
+    lift $ extractRev j
   where 
     ifMatch "" = []
     ifMatch rv = [("If-Match", rv)]

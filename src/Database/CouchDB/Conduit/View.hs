@@ -1,5 +1,5 @@
 {-# LANGUAGE OverloadedStrings #-} 
-{-# LANGUAGE DeriveDataTypeable #-} 
+{-# LANGUAGE DeriveDataTypeable, ScopedTypeVariables #-} 
 
 module Database.CouchDB.Conduit.View 
 (
@@ -7,24 +7,24 @@ module Database.CouchDB.Conduit.View
     couchView,
     rowValue,
     -- * Manipulating views
-    CouchDesignDoc(..),
-    CouchViewDoc(..)
+    couchViewPut
 )
  where
 
-import              Control.Monad (unless)
+import              Prelude hiding (catch)
+
+import              Control.Exception.Lifted (catch)
+
 import              Control.Monad.Trans.Class (lift)
-import              Control.Monad.IO.Class (liftIO)
+--import              Control.Monad.IO.Class (liftIO)
 import              Control.Applicative ((<|>))
 
+import              Data.Default
 import              Data.Generics (Data, Typeable)
-import qualified Data.Map as Map
+import qualified    Data.Map as Map
 import qualified    Data.ByteString as B
-import qualified    Data.ByteString.UTF8 as BU8
-import qualified    Data.Text.Encoding as TE
 import qualified    Data.HashMap.Lazy as M
 import qualified    Data.Aeson as A
-import              Data.Aeson ((.=))
 import              Data.Attoparsec
 
 import              Data.Conduit
@@ -35,8 +35,7 @@ import qualified    Network.HTTP.Conduit as H
 import qualified    Network.HTTP.Types as HT
 
 import              Database.CouchDB.Conduit
-import              Database.CouchDB.Conduit.Internal.Doc
-import              Database.CouchDB.Conduit.Internal.Parser
+import qualified    Database.CouchDB.Conduit.Generic as CCG
 
 -- | Run CouchDB view.
 couchView :: MonadCouch m =>
@@ -59,35 +58,39 @@ rowValue = CL.mapM (\v -> case M.lookup "value" v of
                 _ -> resourceThrow $ CouchError Nothing $ 
                         "View row does not contain value: " ++ show v)
 
+-----------------------------------------------------------------------------
+-- Manipulators
+-----------------------------------------------------------------------------
+
+-- | View. Just for internal.
 data CouchDesignDoc = CouchDesignDoc {
-      language :: String
-    , views :: Map.Map String CouchViewDoc
+      language :: B.ByteString
+    , views :: Map.Map B.ByteString (Map.Map B.ByteString B.ByteString)
     } deriving (Show, Eq, Data, Typeable)
     
-data CouchViewDoc = CouchViewDoc {
-    map :: String,
-    reduce :: Maybe String
-    } deriving (Show, Eq, Data, Typeable)
+instance Default CouchDesignDoc where
+    def = CouchDesignDoc { language = "javascript" ,
+                           views = Map.empty }
     
--- | Helper for put new views
+-- | Helper for put new views in design documents.  
 couchViewPut :: MonadCouch m =>
        DocPath              -- ^ Design document
     -> DocPath              -- ^ View name
-    -> B.ByteString
-    -> B.ByteString
+    -> B.ByteString         -- ^ Language. \"javascript\" for example.
+    -> B.ByteString         -- ^ 
     -> Maybe B.ByteString
     -> m Revision
 couchViewPut designDocName viewName lang mapFn reduceFn = do
-    raw <- couchGetRaw fullPath []
-    rev <- extractRev raw
-    l <- extractField "language" raw
-    undefined
+    (rev, dd@(CouchDesignDoc l vs)) <- catch
+        (CCG.couchGet fullPath [])
+        (\(_ :: CouchError) -> return (B.empty, def))
+    if lang /= l then resourceThrow $ CouchError Nothing "Wrong language"
+        else CCG.couchPut fullPath rev [] $
+                dd { views = Map.insert viewName constructView vs}
   where
-    fullPath = B.concat ["_design/", designDocName, "/", viewName]
-    constructView = TE.decodeUtf8 viewName .= A.object (
-            maybe ["map" .= mapFn] 
-                  (\r -> ["map" .= mapFn, "reduce" .= r])
-                  reduceFn )
+    fullPath = B.concat ["_design/", designDocName]
+    constructView = let s = Map.singleton "map" mapFn in
+        maybe s (\f -> Map.insert "reduce" f s) reduceFn                          
             
 
 

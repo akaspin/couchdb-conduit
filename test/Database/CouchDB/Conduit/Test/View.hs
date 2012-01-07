@@ -11,16 +11,11 @@ import Test.HUnit (Assertion)
 --import Control.Monad.Trans.Class (lift)
 import Control.Monad.IO.Class (liftIO)
 
-import qualified    Data.Aeson as A
-import qualified    Data.Aeson.Generic as AG
-import qualified    Data.HashMap.Lazy as M
 import              Data.Generics (Data, Typeable)
 import Data.Conduit
 import qualified Data.Conduit.List as CL
 
 import Database.CouchDB.Conduit
-import Database.CouchDB.Conduit.Explicit
-import qualified Database.CouchDB.Conduit.Generic as CG
 import Database.CouchDB.Conduit.View
 
 tests :: Test
@@ -38,14 +33,11 @@ data T = T {
 
 case_manip :: Assertion
 case_manip = runCouch "localhost" 5984 "cdbc_test" $ do
-    undefined
-    
-makeJ = A.object [ "views" A..= A.object [
-            
-        ]
-
-    ]
-
+    r' <- couchViewPut "test" "group3" "javascript" 
+            "function(doc) {emit(null, doc);}" Nothing
+    r'' <- couchViewPut "test1" "group3" "javascript" 
+            "function(doc) {emit(null, doc);}" Nothing
+    liftIO $ print (r', r'')
 
 case_basicView :: Assertion
 case_basicView = runCouch "localhost" 5984 "cdbc_test" $ do

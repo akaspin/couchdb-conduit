@@ -41,7 +41,8 @@ library
                    text >= 0.11 && < 0.12,
                    unordered-containers >= 0.1 && < 0.2,
                    syb,
-                   containers
+                   containers,
+                   data-default
   ghc-options:      -Wall
   exposed-modules:  
                     Database.CouchDB.Conduit,
@@ -79,7 +80,8 @@ test-suite test
                    text >= 0.11 && < 0.12,
                    unordered-containers >= 0.1 && < 0.2,
                    syb,
-                   containers
+                   containers,
+                   data-default
   ghc-options:     -Wall -rtsopts -threaded
   hs-source-dirs:  test
   main-is:         Main.hs
