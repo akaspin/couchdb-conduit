@@ -38,11 +38,7 @@ data T = T {
 
 case_manip :: Assertion
 case_manip = runCouch "localhost" 5984 "cdbc_test" $ do
-    res <- couchGetRaw "doc-1" []
-    liftIO $ print res
-    liftIO $ print $ (AG.fromJSON res :: A.Result T)
-    (r, res') <- CG.couchGet "doc-1" []
-    liftIO $ print (r, res' :: T)
+    undefined
     
 makeJ = A.object [ "views" A..= A.object [
             

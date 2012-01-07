@@ -61,7 +61,7 @@ rowValue = CL.mapM (\v -> case M.lookup "value" v of
 
 data CouchDesignDoc = CouchDesignDoc {
       language :: String
---    , views :: Map.Map String CouchViewDoc
+    , views :: Map.Map String CouchViewDoc
     } deriving (Show, Eq, Data, Typeable)
     
 data CouchViewDoc = CouchViewDoc {
@@ -79,23 +79,11 @@ couchViewPut :: MonadCouch m =>
     -> m Revision
 couchViewPut designDocName viewName lang mapFn reduceFn = do
     raw <- couchGetRaw fullPath []
-    rev <- either resourceThrow return $ valToRev raw
-    checkLang raw
+    rev <- extractRev raw
+    l <- extractField "language" raw
     undefined
   where
     fullPath = B.concat ["_design/", designDocName, "/", viewName]
-    checkLang (A.Object j) = 
-        case M.lookup "language" j of
-            Nothing -> resourceThrow $ CouchError Nothing "Language absent"
-            (Just (A.String l)) -> unless
-                    (l == TE.decodeUtf8 lang) $ 
-                    resourceThrow $ CouchError Nothing $ 
-                        "Languages not match. " ++ 
-                        (BU8.toString . TE.encodeUtf8 $ l) ++
-                        " : " ++ BU8.toString lang
-            _ -> resourceThrow $ CouchError Nothing "Bad view" 
-    checkLang _ = resourceThrow $ CouchError Nothing "Bad view"
-    
     constructView = TE.decodeUtf8 viewName .= A.object (
             maybe ["map" .= mapFn] 
                   (\r -> ["map" .= mapFn, "reduce" .= r])
