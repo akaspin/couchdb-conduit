@@ -1,13 +1,17 @@
 {-# LANGUAGE OverloadedStrings, ScopedTypeVariables #-}
 
 -- | Explicit methods for CouchDB documents.
+--   
+--   See 'Data.Aeson' for details.
 module Database.CouchDB.Conduit.Explicit (
     -- * document methods
     couchGet,
     couchPut,
     couchPut',
     couchRev,
-    couchDelete
+    couchDelete,
+    -- * Low-level
+    couchGetRaw
 ) where
 
 import              Prelude hiding (catch)

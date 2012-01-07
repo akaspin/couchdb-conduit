@@ -6,7 +6,9 @@ module Database.CouchDB.Conduit.Generic (
     couchPut,
     couchPut',
     couchRev,
-    couchDelete
+    couchDelete,
+    -- * Low-level
+    couchGetRaw
 ) where
 
 import              Prelude hiding (catch)
@@ -15,6 +17,7 @@ import              Control.Exception.Lifted (catch)
 import              Control.Monad.Trans.Class (lift)
 
 import              Data.ByteString as B
+import qualified    Data.Text.Encoding as TE
 import              Data.Generics (Data)
 import qualified    Data.Aeson as A
 import qualified    Data.Aeson.Generic as AG
@@ -37,10 +40,13 @@ couchGet p q = runResourceT $ do
     H.Response _ _ bsrc <- couch HT.methodGet p [] q 
             (H.RequestBodyBS B.empty) protect'
     j <- bsrc $$ CA.sinkParser A.json
-    case AG.fromJSON j of
-        A.Error e -> lift $ resourceThrow $ CouchError Nothing 
+    A.String r <- lift $ extractField "_rev" j
+    obj <- parseObjToGen $ AG.fromJSON j
+    return (TE.encodeUtf8 r, obj)
+  where
+    parseObjToGen (A.Error e) = lift $ resourceThrow $ CouchError Nothing 
                         ("Error parsing json: " ++ e)
-        A.Success o -> return o
+    parseObjToGen (A.Success o) = return o
         
 -- | Put an object in Couch DB with revision, returning the new Revision.
 couchPut :: (MonadCouch m, Data a) => 

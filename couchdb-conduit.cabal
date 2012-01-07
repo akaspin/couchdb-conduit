@@ -6,9 +6,21 @@ stability:      Experimental
 category:       Database, Conduit
 license:        BSD3
 license-file:   LICENSE
-author:         Alexander Dorofeev <aka.spin@gmail.com>, John Lenz <lenz@math.uic.edu>
+author:         John Lenz <lenz@math.uic.edu>, Alexander Dorofeev <aka.spin@gmail.com>
 maintainer:     Alexander Dorofeev <aka.spin@gmail.com>
 synopsis:       Couch DB client library using http-conduit and aeson
+homepage:       https://github.com/akaspin/couchdb-conduit
+bug-reports:    https://github.com/akaspin/couchdb-conduit/issues
+description:    
+    This package is a thin wrapper around http-conduit to access a Couch DB Database,
+    using the aeson package to parse and encode JSON data. http-conduit, aeson, and
+    attoparsec fit togther so well that this package is mostly just a direct combination
+    of these packages.  The single additional feature in this package is an attoparsec parser
+    for views, which allows constant memory processing of view returns.
+
+source-repository head
+  type:         git
+  location:     git://github.com/akaspin/couchdb-conduit.git
 
 library
   hs-source-dirs:   src
@@ -28,7 +40,8 @@ library
                    aeson >= 0.5 && < 0.6,
                    text >= 0.11 && < 0.12,
                    unordered-containers >= 0.1 && < 0.2,
-                   syb
+                   syb,
+                   containers
   ghc-options:      -Wall
   exposed-modules:  
                     Database.CouchDB.Conduit,
@@ -51,16 +64,22 @@ test-suite test
                    test-framework-quickcheck2,
                    test-framework-hunit,
                    couchdb-conduit,
-                   bytestring,
-                   aeson,
-                   transformers,
-                   utf8-string,
-                   lifted-base,
+                   conduit >= 0.0.0.2 && < 0.1,
+                   attoparsec >= 0.8 && < 0.11,
+                   attoparsec-conduit >= 0.0 && < 0.1,
+                   http-conduit >= 1.1.0.1 && < 1.2,
+                   http-types >= 0.6 && < 0.7,
+                   monad-control >= 0.3 && < 0.4,
+                   transformers >= 0.2 && < 0.3,
+                   transformers-base >= 0.4.1 && < 0.5,
+                   lifted-base >= 0.1 && < 0.2,
+                   bytestring >= 0.9 && < 0.10,
+                   utf8-string >= 0.3 && < 0.4,
+                   aeson >= 0.5 && < 0.6,
+                   text >= 0.11 && < 0.12,
+                   unordered-containers >= 0.1 && < 0.2,
                    syb,
-                   conduit,
-                   unordered-containers,
-                   http-types,
-                   http-conduit
+                   containers
   ghc-options:     -Wall -rtsopts -threaded
   hs-source-dirs:  test
   main-is:         Main.hs
