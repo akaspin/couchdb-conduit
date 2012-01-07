@@ -7,6 +7,8 @@ module Database.CouchDB.Conduit.Generic (
     couchPut',
     couchRev,
     couchDelete,
+    -- * Views
+    toType,
     -- * Low-level
     couchGetRaw
 ) where
@@ -21,7 +23,9 @@ import qualified    Data.Text.Encoding as TE
 import              Data.Generics (Data)
 import qualified    Data.Aeson as A
 import qualified    Data.Aeson.Generic as AG
-import              Data.Conduit (runResourceT, resourceThrow, ($$))
+import              Data.Conduit (runResourceT, resourceThrow, ($$),
+                        Conduit(..), ResourceIO)
+import qualified    Data.Conduit.List as CL (mapM)
 import              Data.Conduit.Attoparsec as CA
 
 import qualified    Network.HTTP.Conduit as H
@@ -76,3 +80,18 @@ couchPut' p q val = do
   where 
     handler404 (CouchError (Just 404) _) = return ""
     handler404 e = resourceThrow e
+
+
+------------------------------------------------------------------------------
+-- View conduit
+------------------------------------------------------------------------------
+
+-- | Convert CouchDB view row or row value from 'Database.CouchDB.Conduit.View' 
+--   to concrete type.
+--   
+-- > res <- couchView "mydesign" "myview" [] $ rowValue =$= toType =$ consume
+toType :: (ResourceIO m, Data a) => Conduit A.Value m a
+toType = CL.mapM (\v -> case AG.fromJSON v of
+            A.Error e -> resourceThrow $ CouchError Nothing 
+                            ("Error parsing json: " ++ e)
+            A.Success o -> return o)

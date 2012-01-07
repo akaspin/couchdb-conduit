@@ -10,6 +10,8 @@ module Database.CouchDB.Conduit.Explicit (
     couchPut',
     couchRev,
     couchDelete,
+    -- * Views
+    toType,
     -- * Low-level
     couchGetRaw
 ) where
@@ -22,15 +24,22 @@ import              Control.Monad.Trans.Class (lift)
 import qualified    Data.ByteString as B
 import qualified    Data.Aeson as A
 import qualified    Data.Text.Encoding as TE (encodeUtf8)
-import              Data.Conduit (runResourceT, resourceThrow, ($$))
+import              Data.Conduit (runResourceT, resourceThrow, ($$), 
+                        Conduit(..), ResourceIO)
+import qualified    Data.Conduit.List as CL (mapM)
 import qualified    Data.Conduit.Attoparsec as CA
 
 import qualified    Network.HTTP.Conduit as H
 import              Network.HTTP.Types as HT
 
 import              Database.CouchDB.Conduit
+import qualified    Database.CouchDB.Conduit.View ()
 import              Database.CouchDB.Conduit.Internal.Doc
 import              Database.CouchDB.Conduit.Internal.Parser
+
+------------------------------------------------------------------------------
+-- Document
+------------------------------------------------------------------------------
 
 -- | Load a single object with 'Revision' from couch DB.
 couchGet :: (MonadCouch m, A.FromJSON a) => 
@@ -79,4 +88,16 @@ couchPut' p q val = do
 ------------------------------------------------------------------------------
 -- View conduit
 ------------------------------------------------------------------------------
+
+-- | Convert CouchDB view row or row value from 'Database.CouchDB.Conduit.View' 
+--   to concrete type.
+--   
+-- > res <- couchView "mydesign" "myview" [] $ rowValue =$= toType =$ consume
+toType :: (ResourceIO m, A.FromJSON a) => Conduit A.Value m a
+toType = CL.mapM (\v -> case A.fromJSON v of
+            A.Error e -> resourceThrow $ CouchError Nothing 
+                            ("Error parsing json: " ++ e)
+            A.Success o -> return o)
+
+
 
