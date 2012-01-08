@@ -1,6 +1,6 @@
 {-# LANGUAGE OverloadedStrings, ScopedTypeVariables #-}
 
--- | Explicit methods for CouchDB documents.
+-- | Explicit methods for CouchDB documents. 
 --   
 --   See 'Data.Aeson' for details.
 module Database.CouchDB.Conduit.Explicit (
@@ -21,15 +21,16 @@ import              Prelude hiding (catch)
 import              Control.Exception.Lifted (catch)
 import              Control.Monad.Trans.Class (lift)
 
-import qualified    Data.ByteString as B
-import qualified    Data.Aeson as A
+import qualified    Data.ByteString as B (empty)
+import qualified    Data.Aeson as A (FromJSON(..), ToJSON(..), Value(..),
+                        Result(..), fromJSON, encode, json)
 import qualified    Data.Text.Encoding as TE (encodeUtf8)
 import              Data.Conduit (runResourceT, resourceThrow, ($$), 
                         Conduit(..), ResourceIO)
 import qualified    Data.Conduit.List as CL (mapM)
-import qualified    Data.Conduit.Attoparsec as CA
+import qualified    Data.Conduit.Attoparsec as CA (sinkParser)
 
-import qualified    Network.HTTP.Conduit as H
+import qualified    Network.HTTP.Conduit as H (Response(..), RequestBody(..))
 import              Network.HTTP.Types as HT
 
 import              Database.CouchDB.Conduit

@@ -53,8 +53,7 @@ library
                     Database.CouchDB.Conduit.View
   other-modules:    
                     Database.CouchDB.Conduit.Internal.Doc,
-                    Database.CouchDB.Conduit.Internal.Parser,
-                    Database.CouchDB.Conduit.Internal.Path
+                    Database.CouchDB.Conduit.Internal.Parser
 
 test-suite test
   type:            exitcode-stdio-1.0

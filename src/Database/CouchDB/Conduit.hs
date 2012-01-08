@@ -3,15 +3,16 @@
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 
--- | 
+-- | For complete documentation about The Couch DB HTTP API see
+--   <http://wiki.apache.org/couchdb/Complete_HTTP_API_Reference>
 
 module Database.CouchDB.Conduit (
-    -- * Document metainfo
-    
+    -- * Document paths and revisions
     -- $docPath
     Revision,
     Path,
     mkPath,
+    
     -- * CouchDB Connection
     CouchConnection(..),
     runCouch,
@@ -27,31 +28,29 @@ module Database.CouchDB.Conduit (
 
 import Prelude hiding (catch)
 
--- control
 import              Control.Monad.Trans.Reader (ReaderT, ask, runReaderT)
 import              Control.Exception (Exception, SomeException)
 import              Control.Exception.Lifted (catch)
 import              Control.Monad.Trans.Class (lift)
 import              Control.Monad.Base (liftBase)
--- conduit
+
 import              Data.Conduit (ResourceIO, ResourceT, BufferedSource, 
                         ($$), resourceThrow)
 import              Data.Conduit.Attoparsec (sinkParser)
 
--- networking
 import qualified    Network.HTTP.Conduit as H (Manager, RequestBody(..),
                         Response(..), Request(..), def, http, withManager)
-import qualified    Network.HTTP.Types as HT
+import qualified    Network.HTTP.Types as HT (Status(..), Method, RequestHeaders, 
+                        Query, encodePathSegments, renderQuery)
 
--- data
 import              Data.Generics (Typeable)
 import              Data.Aeson (json, Value(..))
 import qualified    Data.ByteString as B (ByteString, intercalate)
 import qualified    Data.ByteString.UTF8 as BU8 (toString)
 import qualified    Data.Text as T (unpack)
+import qualified    Data.Text.Encoding as TE (decodeUtf8)
+import qualified    Blaze.ByteString.Builder as BLB (toByteString)
 import qualified    Data.HashMap.Lazy as M (lookup)
-
-import              Database.CouchDB.Conduit.Internal.Path (mkPath)
 
 -- | Path or path fragment.
 type Path = B.ByteString
@@ -84,6 +83,15 @@ instance ResourceIO m => MonadCouch (ReaderT CouchConnection m) where
 data CouchError = CouchError (Maybe Int) String
     deriving (Show, Typeable)
 instance Exception CouchError
+
+-- | Make correct path from escaped fragments. Filter empty fragments.
+--
+-- > mkPath ["db", "", "doc/with/slashes"]
+-- > db/doc%2Fwith%2Fslashes
+mkPath :: [Path]    -- ^ Path fragments be escaped.  
+       -> Path
+mkPath = BLB.toByteString . HT.encodePathSegments . 
+    map TE.decodeUtf8 . filter (/="")
 
 -- | The most general method of accessing CouchDB.  This is a very thin wrapper 
 --   around 'H.http'.  Most of the time you should use one of the other access 
@@ -174,6 +182,9 @@ runCouch h p d = withCouchConnection h p d . runReaderT
 --   'runCouch', this function will help you create the 'CouchConnection'. On 
 --   the other hand, if you want to implement connection pooling, you will not 
 --   be able to use withCouchConnection and must create the connection yourself.
+-- 
+-- > withCouchConnection "host" 5984 "db" $ runReaderT $ do
+-- >    ... -- actions
 withCouchConnection :: ResourceIO m =>
        B.ByteString                 -- ^ Host
     -> Int                          -- ^ Port
@@ -195,7 +206,4 @@ withCouchConnection h p db f =
 -- fragments /must/ be escaped.
 -- 
 -- > database/_design/my%2Fdesign/_view/my%2Fview
-
-
-
 
