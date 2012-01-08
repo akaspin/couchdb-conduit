@@ -37,7 +37,7 @@ import              Database.CouchDB.Conduit.Internal.Parser
 
 -- | Load a single object from couch DB.
 couchGet :: (MonadCouch m, Data a) => 
-       DocPath      -- ^ Document path
+       Path         -- ^ Document path
     -> HT.Query     -- ^ Query
     -> m (Revision, a)
 couchGet p q = runResourceT $ do
@@ -54,7 +54,7 @@ couchGet p q = runResourceT $ do
         
 -- | Put an object in Couch DB with revision, returning the new Revision.
 couchPut :: (MonadCouch m, Data a) => 
-        DocPath     -- ^ Document path.
+        Path        -- ^ Document path.
      -> Revision    -- ^ Document revision. For new docs provide empty string.
      -> HT.Query    -- ^ Query arguments.
      -> a           -- ^ The object to store.
@@ -70,7 +70,7 @@ couchPut p r q val = runResourceT $  do
     
 -- | Brute force version of 'couchPut'.
 couchPut' :: (MonadCouch m, Data a) => 
-        DocPath     -- ^ Document path.
+        Path        -- ^ Document path.
      -> HT.Query    -- ^ Query arguments.
      -> a           -- ^ The object to store.
      -> m Revision      

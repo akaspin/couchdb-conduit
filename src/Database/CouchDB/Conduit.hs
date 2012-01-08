@@ -3,11 +3,16 @@
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 
+-- | 
+
 module Database.CouchDB.Conduit (
-    -- * CouchDB Connection
-    DbPath,
-    DocPath,
+    -- * Document metainfo
+    
+    -- $docPath
     Revision,
+    Path,
+    mkPath,
+    -- * CouchDB Connection
     CouchConnection(..),
     runCouch,
     withCouchConnection,
@@ -23,40 +28,33 @@ module Database.CouchDB.Conduit (
 import Prelude hiding (catch)
 
 -- control
-import Control.Monad.Trans.Reader (ReaderT, ask, runReaderT)
-import Control.Exception (Exception, SomeException)
-import Control.Exception.Lifted (catch)
-import Control.Monad.Trans.Class (lift)
-import Control.Monad.Base (liftBase)
-
+import              Control.Monad.Trans.Reader (ReaderT, ask, runReaderT)
+import              Control.Exception (Exception, SomeException)
+import              Control.Exception.Lifted (catch)
+import              Control.Monad.Trans.Class (lift)
+import              Control.Monad.Base (liftBase)
 -- conduit
-import Data.Conduit (ResourceIO, ResourceT, BufferedSource, 
-                    ($$), resourceThrow)
-import Data.Conduit.Attoparsec (sinkParser)
+import              Data.Conduit (ResourceIO, ResourceT, BufferedSource, 
+                        ($$), resourceThrow)
+import              Data.Conduit.Attoparsec (sinkParser)
 
 -- networking
-import qualified Network.HTTP.Conduit as H
-import qualified Network.HTTP.Types as HT
+import qualified    Network.HTTP.Conduit as H (Manager, RequestBody(..),
+                        Response(..), Request(..), def, http, withManager)
+import qualified    Network.HTTP.Types as HT
 
 -- data
-import Data.Typeable (Typeable)
-import Data.Aeson (json, Value(..))
-import qualified Data.ByteString as B
-import qualified Data.ByteString.UTF8 as BU8 (toString)
-import qualified Data.Text as T
-import qualified Data.HashMap.Lazy as M (lookup)
+import              Data.Generics (Typeable)
+import              Data.Aeson (json, Value(..))
+import qualified    Data.ByteString as B (ByteString, intercalate)
+import qualified    Data.ByteString.UTF8 as BU8 (toString)
+import qualified    Data.Text as T (unpack)
+import qualified    Data.HashMap.Lazy as M (lookup)
 
--- | A path to a CouchDB Database.
--- 
---   /Note:/ In CouchDB database name /can/ contain slashes. But, 
---   to work with such objects, path must be escaped.
-type DbPath = B.ByteString
+import              Database.CouchDB.Conduit.Internal.Path (mkPath)
 
--- | A path to a CouchDB Document within database.
--- 
---   /Note:/ In CouchDB database or document name /can/ contain slashes. But, 
---   to work with such objects, path must be escaped.
-type DocPath = B.ByteString
+-- | Path or path fragment.
+type Path = B.ByteString
 
 -- | Represents a revision of a CouchDB Document. 
 type Revision = B.ByteString
@@ -64,12 +62,13 @@ type Revision = B.ByteString
 -- | Represents a single connection to CouchDB server. 
 --
 --   To access different databases through a single connection, set 'dbname'
---   to empty string.
+--   to empty string. But, in this case, all requests must be preceded by the 
+--   database name with unescaped slash.
 data CouchConnection = CouchConnection {
       host      :: B.ByteString     -- ^ Hostname
     , port      :: Int              -- ^ Port
     , manager   :: H.Manager        -- ^ Manager
-    , dbname    :: DbPath             -- ^ Database name
+    , dbname    :: Path             -- ^ Database name
 }
 
 -- | A monad which allows access to the connection
@@ -92,7 +91,7 @@ instance Exception CouchError
 --   attachments that are not in JSON format.
 couch :: MonadCouch m =>
        HT.Method                -- ^ Method
-    -> DocPath                  -- ^ Path
+    -> Path                     -- ^ Path
     -> HT.RequestHeaders        -- ^ Headers
     -> HT.Query                 -- ^ Query args
     -> H.RequestBody m          -- ^ Request body
@@ -145,7 +144,7 @@ protect' :: MonadCouch m =>
        H.Response (BufferedSource m B.ByteString)   -- ^ Response
     -> ResourceT m (H.Response (BufferedSource m B.ByteString))
 protect' = protect [200, 201, 202, 304]
-       
+
 -- | Run a sequence of CouchDB actions.
 --
 --   The functions below to access CouchDB require a 'MonadCouch' instance to 
@@ -163,7 +162,7 @@ protect' = protect [200, 201, 202, 304]
 runCouch :: ResourceIO m =>
        B.ByteString                 -- ^ Host
     -> Int                          -- ^ Port
-    -> DbPath                       -- ^ Database
+    -> Path                         -- ^ Database
     -> ReaderT CouchConnection m a  -- ^ CouchDB actions
     -> m a
 runCouch h p d = withCouchConnection h p d . runReaderT
@@ -178,9 +177,25 @@ runCouch h p d = withCouchConnection h p d . runReaderT
 withCouchConnection :: ResourceIO m =>
        B.ByteString                 -- ^ Host
     -> Int                          -- ^ Port
-    -> DbPath                       -- ^ Database 
+    -> Path                         -- ^ Database 
     -> (CouchConnection -> m a)     -- ^ Function to run
     -> m a
 withCouchConnection h p db f = 
---     H.withManager $ \m -> f $ CouchConnection h p m db
      H.withManager $ \m -> lift $ f $ CouchConnection h p m db
+     
+-- $docPath
+-- As a rule, full path to document in CouchDB is just URL path. But there is 
+-- one subtlety. For example, document ids /can/ contain slashes. But, 
+-- to work with such objects, path fragments must be escaped.
+-- 
+-- > database/doc%2Fname
+--
+-- But, fo non-document items such as views, attachments e.t.c., slashes
+-- between path fragments /must not/ be escaped. While slashes in path 
+-- fragments /must/ be escaped.
+-- 
+-- > database/_design/my%2Fdesign/_view/my%2Fview
+
+
+
+

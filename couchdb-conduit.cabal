@@ -42,7 +42,8 @@ library
                    unordered-containers >= 0.1 && < 0.2,
                    syb,
                    containers,
-                   data-default
+                   data-default,
+                   blaze-builder
   ghc-options:      -Wall
   exposed-modules:  
                     Database.CouchDB.Conduit,
@@ -52,7 +53,8 @@ library
                     Database.CouchDB.Conduit.View
   other-modules:    
                     Database.CouchDB.Conduit.Internal.Doc,
-                    Database.CouchDB.Conduit.Internal.Parser
+                    Database.CouchDB.Conduit.Internal.Parser,
+                    Database.CouchDB.Conduit.Internal.Path
 
 test-suite test
   type:            exitcode-stdio-1.0
@@ -81,7 +83,8 @@ test-suite test
                    unordered-containers >= 0.1 && < 0.2,
                    syb,
                    containers,
-                   data-default
+                   data-default,
+                   blaze-builder
   ghc-options:     -Wall -rtsopts -threaded
   hs-source-dirs:  test
   main-is:         Main.hs

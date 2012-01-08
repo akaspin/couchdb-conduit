@@ -19,7 +19,7 @@ import Database.CouchDB.Conduit
 
 -- | Create CouchDB database.
 couchPutDB :: MonadCouch m =>
-       DbPath   -- ^ If you passed a database name to 'withCouchConnection',
+       Path     -- ^ If you passed a database name to 'withCouchConnection',
                 --   'runCouch', or 'CouchConnection', the path should be
                 --   the empty string.  If you passed the empty string to
                 --   'CouchConnection', then the dbname should be used here.
@@ -31,7 +31,7 @@ couchPutDB p = runResourceT $ couch HT.methodPut p [] []
 -- | Brute force version of couchPutDb. Create CouchDB database regardless 
 --   of presence. Catches 'CouchError' /412/.
 couchPutDB' :: MonadCouch m =>
-       DbPath   -- ^ If you passed a database name to 'withCouchConnection',
+       Path     -- ^ If you passed a database name to 'withCouchConnection',
                 --   'runCouch', or 'CouchConnection', the path should be
                 --   the empty string.  If you passed the empty string to
                 --   'CouchConnection', then the dbname should be used here.
@@ -44,7 +44,7 @@ couchPutDB' p =
 
 -- | Delete a database.
 couchDeleteDB :: MonadCouch m => 
-       DbPath   -- ^ If you passed a database name to 'withCouchConnection',
+       Path     -- ^ If you passed a database name to 'withCouchConnection',
                 --   'runCouch', or 'CouchConnection', the path should be
                 --   the empty string.  If you passed the empty string to
                 --   'CouchConnection', then the dbname should be used here.

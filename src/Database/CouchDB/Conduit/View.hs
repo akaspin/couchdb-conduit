@@ -39,8 +39,8 @@ import qualified    Database.CouchDB.Conduit.Generic as CCG
 
 -- | Run CouchDB view.
 couchView :: MonadCouch m =>
-       DocPath              -- ^ Design document
-    -> DocPath              -- ^ View name
+       Path                 -- ^ Design document
+    -> Path                 -- ^ View name
     -> HT.Query             -- ^ Query
     -> Sink A.Object m a    -- ^ Sink for handle view rows
     -> m a
@@ -77,8 +77,8 @@ instance Default CouchDesignDoc where
 --   /Cauntion/ Current implementation kill all other info except views. Use 
 --   wise.
 couchViewPut :: MonadCouch m =>
-       DocPath              -- ^ Design document
-    -> DocPath              -- ^ View name
+       Path                 -- ^ Design document
+    -> Path                 -- ^ View name
     -> B.ByteString         -- ^ Language. \"javascript\" for example.
     -> B.ByteString         -- ^ 
     -> Maybe B.ByteString

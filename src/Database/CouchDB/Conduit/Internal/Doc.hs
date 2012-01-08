@@ -25,7 +25,7 @@ import              Database.CouchDB.Conduit
 
 -- | Get Revision of a document. 
 couchRev :: MonadCouch m => 
-       DocPath 
+       Path 
     -> m Revision
 couchRev p = runResourceT $ do
     (H.Response _ hs _) <- couch HT.methodHead p [] [] 
@@ -38,7 +38,7 @@ couchRev p = runResourceT $ do
 
 -- | Delete the given revision of the object.    
 couchDelete :: MonadCouch m => 
-       DocPath 
+       Path 
     -> Revision
     -> m ()
 couchDelete p r = runResourceT $ couch HT.methodDelete p 
@@ -50,9 +50,9 @@ couchDelete p r = runResourceT $ couch HT.methodDelete p
 -- low-level 
 ------------------------------------------------------------------------------
 
--- | Load a single object from couch DB.
+-- | Load raw 'A.Value' from single object from couch DB.
 couchGetRaw :: MonadCouch m => 
-       DocPath      -- ^ Document path
+       Path         -- ^ Document path
     -> HT.Query     -- ^ Query
     -> m A.Value
 couchGetRaw p q = runResourceT $ do
