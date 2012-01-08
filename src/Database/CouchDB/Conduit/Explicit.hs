@@ -11,9 +11,7 @@ module Database.CouchDB.Conduit.Explicit (
     couchRev,
     couchDelete,
     -- * Views
-    toType,
-    -- * Low-level
-    couchGetRaw
+    toType
 ) where
 
 import              Prelude hiding (catch)
@@ -31,12 +29,15 @@ import qualified    Data.Conduit.List as CL (mapM)
 import qualified    Data.Conduit.Attoparsec as CA (sinkParser)
 
 import qualified    Network.HTTP.Conduit as H (Response(..), RequestBody(..))
-import              Network.HTTP.Types as HT
+import              Network.HTTP.Types as HT (Query, methodGet, methodPut)
 
-import              Database.CouchDB.Conduit
+import              Database.CouchDB.Conduit (MonadCouch(..), Path, Revision,
+                        CouchError(..), couch, protect')
 import qualified    Database.CouchDB.Conduit.View ()
-import              Database.CouchDB.Conduit.Internal.Doc
-import              Database.CouchDB.Conduit.Internal.Parser
+import              Database.CouchDB.Conduit.Internal.Doc (couchRev,
+                        couchDelete)
+import              Database.CouchDB.Conduit.Internal.Parser (extractField, 
+                        extractRev)
 
 ------------------------------------------------------------------------------
 -- Document

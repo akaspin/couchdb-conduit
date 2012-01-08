@@ -9,8 +9,6 @@ module Database.CouchDB.Conduit.Generic (
     couchDelete,
     -- * Views
     toType,
-    -- * Low-level
-    couchGetRaw
 ) where
 
 import              Prelude hiding (catch)

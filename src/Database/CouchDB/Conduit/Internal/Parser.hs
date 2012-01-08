@@ -2,7 +2,7 @@
 
 module Database.CouchDB.Conduit.Internal.Parser where
 
-import Data.Conduit
+import              Data.Conduit
 import qualified    Data.ByteString.UTF8 as BU8
 import qualified    Data.Text as T
 import qualified    Data.Text.Encoding as TE
@@ -31,3 +31,11 @@ extractField s (A.Object o) = case M.lookup s o of
 extractField _ _ = resourceThrow $ CouchError Nothing 
         "Couch DB did not return an object"
 
+jsonToTypeWith :: ResourceIO m =>
+                (A.Value -> A.Result a) 
+             -> A.Value 
+             -> m a
+jsonToTypeWith f j = case f j of
+        A.Error e -> resourceThrow $ CouchError Nothing 
+                        ("Error parsing json: " ++ e)
+        A.Success o -> return o

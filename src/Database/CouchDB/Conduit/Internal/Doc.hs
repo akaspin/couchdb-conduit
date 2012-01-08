@@ -60,4 +60,6 @@ couchGetRaw p q = runResourceT $ do
             (H.RequestBodyBS B.empty) protect'
     bsrc $$ CA.sinkParser A.json
     
+couchGetWith = undefined
+    
 

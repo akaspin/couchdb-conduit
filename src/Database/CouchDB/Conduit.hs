@@ -3,7 +3,9 @@
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 
--- | For complete documentation about The Couch DB HTTP API see
+-- | 
+--   
+--   For complete documentation about The Couch DB HTTP API see
 --   <http://wiki.apache.org/couchdb/Complete_HTTP_API_Reference>
 
 module Database.CouchDB.Conduit (
