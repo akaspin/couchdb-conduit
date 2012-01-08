@@ -22,6 +22,7 @@ extractRev o = do
     A.String r <- extractField "rev" o
     return $ TE.encodeUtf8 r
 
+-- | Extract single field
 extractField :: ResourceIO m =>
            T.Text -> A.Value -> m A.Value
 extractField s (A.Object o) = case M.lookup s o of
@@ -31,6 +32,7 @@ extractField s (A.Object o) = case M.lookup s o of
 extractField _ _ = resourceThrow $ CouchError Nothing 
         "Couch DB did not return an object"
 
+-- | Convert to type with given convertor
 jsonToTypeWith :: ResourceIO m =>
                 (A.Value -> A.Result a) 
              -> A.Value 

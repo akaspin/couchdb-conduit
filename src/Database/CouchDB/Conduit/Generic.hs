@@ -11,45 +11,24 @@ module Database.CouchDB.Conduit.Generic (
     toType,
 ) where
 
-import              Prelude hiding (catch)
-
-import              Control.Exception.Lifted (catch)
-import              Control.Monad.Trans.Class (lift)
-
-import              Data.ByteString as B
-import qualified    Data.Text.Encoding as TE
 import              Data.Generics (Data)
 import qualified    Data.Aeson as A
 import qualified    Data.Aeson.Generic as AG
-import              Data.Conduit (runResourceT, resourceThrow, ($$),
-                        Conduit(..), ResourceIO)
-import qualified    Data.Conduit.List as CL (mapM)
-import              Data.Conduit.Attoparsec as CA
+import              Data.Conduit (Conduit(..), ResourceIO)
 
-import qualified    Network.HTTP.Conduit as H
 import qualified    Network.HTTP.Types as HT
 
 import              Database.CouchDB.Conduit
 import              Database.CouchDB.Conduit.Internal.Doc
-import              Database.CouchDB.Conduit.Internal.Parser
+import              Database.CouchDB.Conduit.Internal.View
 
 -- | Load a single object from couch DB.
 couchGet :: (MonadCouch m, Data a) => 
        Path         -- ^ Document path
     -> HT.Query     -- ^ Query
     -> m (Revision, a)
-couchGet p q = runResourceT $ do
-    H.Response _ _ bsrc <- couch HT.methodGet p [] q 
-            (H.RequestBodyBS B.empty) protect'
-    j <- bsrc $$ CA.sinkParser A.json
-    A.String r <- lift $ extractField "_rev" j
-    obj <- parseObjToGen $ AG.fromJSON j
-    return (TE.encodeUtf8 r, obj)
-  where
-    parseObjToGen (A.Error e) = lift $ resourceThrow $ CouchError Nothing 
-                        ("Error parsing json: " ++ e)
-    parseObjToGen (A.Success o) = return o
-        
+couchGet = couchGetWith AG.fromJSON  
+
 -- | Put an object in Couch DB with revision, returning the new Revision.
 couchPut :: (MonadCouch m, Data a) => 
         Path        -- ^ Document path.
@@ -57,14 +36,7 @@ couchPut :: (MonadCouch m, Data a) =>
      -> HT.Query    -- ^ Query arguments.
      -> a           -- ^ The object to store.
      -> m Revision      
-couchPut p r q val = runResourceT $  do
-    H.Response _ _ bsrc <- couch HT.methodPut p (ifMatch r) q 
-            (H.RequestBodyLBS $ AG.encode val) protect'
-    j <- bsrc $$ CA.sinkParser A.json
-    lift $ extractRev j
-  where 
-    ifMatch "" = []
-    ifMatch rv = [("If-Match", rv)]
+couchPut = couchPutWith AG.encode
     
 -- | Brute force version of 'couchPut'.
 couchPut' :: (MonadCouch m, Data a) => 
@@ -72,13 +44,7 @@ couchPut' :: (MonadCouch m, Data a) =>
      -> HT.Query    -- ^ Query arguments.
      -> a           -- ^ The object to store.
      -> m Revision      
-couchPut' p q val = do
-    rev <- catch (couchRev p) handler404
-    couchPut p rev q val
-  where 
-    handler404 (CouchError (Just 404) _) = return ""
-    handler404 e = resourceThrow e
-
+couchPut' = couchPutWith' AG.encode
 
 ------------------------------------------------------------------------------
 -- View conduit
@@ -89,7 +55,4 @@ couchPut' p q val = do
 --   
 -- > res <- couchView "mydesign" "myview" [] $ rowValue =$= toType =$ consume
 toType :: (ResourceIO m, Data a) => Conduit A.Value m a
-toType = CL.mapM (\v -> case AG.fromJSON v of
-            A.Error e -> resourceThrow $ CouchError Nothing 
-                            ("Error parsing json: " ++ e)
-            A.Success o -> return o)
+toType = toTypeWith AG.fromJSON 
