@@ -1,7 +1,7 @@
 {-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE FlexibleInstances #-}
-{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE ScopedTypeVariables, MultiParamTypeClasses #-}
 
 -- | 
 --   
@@ -78,7 +78,7 @@ class ResourceIO m => MonadCouch m where
 
 instance ResourceIO m => MonadCouch (ReaderT CouchConnection m) where
     couchConnection = ask
-    
+
 -- | A Couch DB Error. If the error comes from http, the http status code 
 --   is also given. Non-http errors include things like errors  
 --   parsing the response.
