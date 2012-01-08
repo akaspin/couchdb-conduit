@@ -32,7 +32,7 @@ data T = T {
     } deriving (Show, Eq, Data, Typeable)
 
 case_manip :: Assertion
-case_manip = runCouch "localhost" 5984 "cdbc_test" $ do
+case_manip = runCouch conn $ do
     r' <- couchViewPut "test" "group3" "javascript" 
             "function(doc) {emit(null, doc);}" Nothing
     r'' <- couchViewPut "test1" "group3" "javascript" 
@@ -40,7 +40,7 @@ case_manip = runCouch "localhost" 5984 "cdbc_test" $ do
     liftIO $ print (r', r'')
 
 case_basicView :: Assertion
-case_basicView = runCouch "localhost" 5984 "cdbc_test" $ do
+case_basicView = runCouch conn $ do
     _ <- couchView "test" "group1" [("reduce", Just "false")] $ 
         (CL.mapM (liftIO . print)) =$ CL.consume
     _ <- couchView "test" "group1" [("reduce", Just "false")] $ 
@@ -50,7 +50,10 @@ case_basicView = runCouch "localhost" 5984 "cdbc_test" $ do
     liftIO $ print res'
 
 case_basicViewReduce :: Assertion
-case_basicViewReduce = runCouch "localhost" 5984 "cdbc_test" $ do
+case_basicViewReduce = runCouch conn $ do
     res <- couchView "test" "group1" [] $ 
         CL.mapM (liftIO . print) =$ CL.consume
     liftIO $ print res
+    
+conn :: CouchConnection
+conn = def {couchDB = "cdbc_test"} 

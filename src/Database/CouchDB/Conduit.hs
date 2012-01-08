@@ -1,7 +1,8 @@
 {-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE FlexibleInstances #-}
-{-# LANGUAGE ScopedTypeVariables, MultiParamTypeClasses #-}
+{-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 
 -- | 
 --   
@@ -16,11 +17,18 @@ module Database.CouchDB.Conduit (
     mkPath,
     
     -- * CouchDB Connection
-    CouchConnection(..),
+    CouchConnection,
+    def,
+    couchHost,
+    couchPort,
+    couchManager,
+    couchDB,
+    
+    -- * Executing
     runCouch,
     withCouchConnection,
-    MonadCouch(..),
-    CouchError(..),
+    MonadCouch (..),
+    CouchError (..),
     
     -- * Low-level API
     couch,
@@ -37,22 +45,22 @@ import              Control.Monad.Trans.Class (lift)
 import              Control.Monad.Base (liftBase)
 
 import              Data.Conduit (ResourceIO, ResourceT, BufferedSource, 
-                        ($$), resourceThrow)
+                        runResourceT, ($$), resourceThrow)
 import              Data.Conduit.Attoparsec (sinkParser)
 
-import qualified    Network.HTTP.Conduit as H (Manager, RequestBody(..),
-                        Response(..), Request(..), def, http, withManager)
-import qualified    Network.HTTP.Types as HT (Status(..), Method, RequestHeaders, 
-                        Query, encodePathSegments, renderQuery)
+import qualified    Network.HTTP.Conduit as H
+import qualified    Network.HTTP.Types as HT
 
 import              Data.Generics (Typeable)
+import              Data.Default (Default (def))
 import              Data.Aeson (json, Value(..))
-import qualified    Data.ByteString as B (ByteString, intercalate)
-import qualified    Data.ByteString.UTF8 as BU8 (toString)
+import qualified    Data.ByteString as B
+import qualified    Data.ByteString.UTF8 as BU8
 import qualified    Data.Text as T (unpack)
-import qualified    Data.Text.Encoding as TE (decodeUtf8)
-import qualified    Blaze.ByteString.Builder as BLB (toByteString)
-import qualified    Data.HashMap.Lazy as M (lookup)
+import qualified    Data.Text.Encoding as TE
+import qualified    Blaze.ByteString.Builder as BLB
+import qualified    Data.HashMap.Lazy as M
+import              Data.Maybe (fromJust)
 
 -- | Path or path fragment.
 type Path = B.ByteString
@@ -66,11 +74,14 @@ type Revision = B.ByteString
 --   to empty string. But, in this case, all requests must be preceded by the 
 --   database name with unescaped slash.
 data CouchConnection = CouchConnection {
-      host      :: B.ByteString     -- ^ Hostname
-    , port      :: Int              -- ^ Port
-    , manager   :: H.Manager        -- ^ Manager
-    , dbname    :: Path             -- ^ Database name
+      couchHost      :: B.ByteString     -- ^ Hostname
+    , couchPort      :: Int              -- ^ Port
+    , couchManager   :: Maybe H.Manager  -- ^ Manager
+    , couchDB        :: Path             -- ^ Database name
 }
+
+instance Default CouchConnection where
+    def = CouchConnection "localhost" 5984 Nothing ""
 
 -- | A monad which allows access to the connection
 class ResourceIO m => MonadCouch m where
@@ -113,15 +124,16 @@ couch meth path hdrs qs reqBody protectFn = do
     conn <- lift couchConnection
     let req = H.def 
             { H.method          = meth
-            , H.host            = host conn
+            , H.host            = couchHost conn
             , H.requestHeaders  = hdrs
-            , H.port            = port conn
+            , H.port            = couchPort conn
             , H.path            = B.intercalate "/" . filter (/="") $ 
-                                        [dbname conn, path]
+                                        [couchDB conn, path]
             , H.queryString     = HT.renderQuery False qs
             , H.requestBody     = reqBody
             , H.checkStatus = const . const $ Nothing }
-    res <- H.http req (manager conn)
+    -- FIXME fromMaybe
+    res <- H.http req (fromJust $ couchManager conn)
     protectFn res 
 
 -- | Protect 'H.Response' from bad status codes. If status code in list 
@@ -170,12 +182,10 @@ protect' = protect [200, 201, 202, 304]
 --
 --   This function is a combination of 'withCouchConnection' and 'runReaderT'
 runCouch :: ResourceIO m =>
-       B.ByteString                 -- ^ Host
-    -> Int                          -- ^ Port
-    -> Path                         -- ^ Database
+       CouchConnection              -- ^ Couch connection
     -> ReaderT CouchConnection m a  -- ^ CouchDB actions
     -> m a
-runCouch h p d = withCouchConnection h p d . runReaderT
+runCouch c = withCouchConnection c . runReaderT
 
 -- | Connect to a CouchDB server, call the supplied function, and then close 
 --   the connection.
@@ -185,16 +195,16 @@ runCouch h p d = withCouchConnection h p d . runReaderT
 --   the other hand, if you want to implement connection pooling, you will not 
 --   be able to use withCouchConnection and must create the connection yourself.
 -- 
--- > withCouchConnection "host" 5984 "db" $ runReaderT $ do
+-- > withCouchConnection def {couchDB = "db"} $ runReaderT $ do
 -- >    ... -- actions
 withCouchConnection :: ResourceIO m =>
-       B.ByteString                 -- ^ Host
-    -> Int                          -- ^ Port
-    -> Path                         -- ^ Database 
+       CouchConnection              -- ^ Couch connection
     -> (CouchConnection -> m a)     -- ^ Function to run
     -> m a
-withCouchConnection h p db f = 
-     H.withManager $ \m -> lift $ f $ CouchConnection h p m db
+withCouchConnection c@(CouchConnection _ _ mayMan _) f = 
+    case mayMan of
+        Nothing -> H.withManager $ \m -> lift $ f $ c {couchManager = Just m}
+        Just m -> runResourceT $ lift $ f $ c {couchManager = Just m}
      
 -- $docPath
 -- As a rule, full path to document in CouchDB is just URL path. But there is 
