@@ -85,7 +85,8 @@ test-suite test
                    syb,
                    containers,
                    data-default,
-                   blaze-builder
+                   blaze-builder,
+                   mtl
   ghc-options:     -Wall -rtsopts -threaded
   hs-source-dirs:  test
   main-is:         Main.hs

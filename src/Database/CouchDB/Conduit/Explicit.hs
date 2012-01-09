@@ -2,15 +2,16 @@
 
 -- | Explicit methods for CouchDB documents. 
 --   
---   See 'Data.Aeson' for details.
+--   See "Data.Aeson" for details.
 module Database.CouchDB.Conduit.Explicit (
-    -- * document methods
+    -- * Accessing documents
     couchGet,
+    couchRev,
+    -- * Manipulating documents
     couchPut,
     couchPut',
-    couchRev,
     couchDelete,
-    -- * Views
+    -- * Working with views #view#
     toType
 ) where
 
@@ -30,14 +31,14 @@ import              Database.CouchDB.Conduit.Internal.View
 -- Document
 ------------------------------------------------------------------------------
 
--- | Load a single object with 'Revision' from couch DB.
+-- | Load a single object with 'Revision' from couch DB. 
 couchGet :: (MonadCouch m, A.FromJSON a) => 
        Path         -- ^ Document path
     -> HT.Query     -- ^ Query
     -> m (Revision, a)
 couchGet = couchGetWith A.fromJSON
 
--- | Put an object in Couch DB with revision, returning the new Revision.
+-- | Put an object in Couch DB with revision, returning the new 'Revision'.
 couchPut :: (MonadCouch m, A.ToJSON a) => 
         Path        -- ^ Document path.
      -> Revision    -- ^ Document revision. For new docs provide empty string.
@@ -58,7 +59,7 @@ couchPut' = couchPutWith' A.encode
 -- View conduit
 ------------------------------------------------------------------------------
 
--- | Convert CouchDB view row or row value from 'Database.CouchDB.Conduit.View' 
+-- | Convert CouchDB view row or row value from "Database.CouchDB.Conduit.View" 
 --   to concrete type.
 --   
 -- > res <- couchView "mydesign" "myview" [] $ rowValue =$= toType =$ consume

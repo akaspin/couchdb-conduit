@@ -2,13 +2,15 @@
 
 -- | Generic methods for CouchDB documents
 module Database.CouchDB.Conduit.Generic (
+     -- * Accessing documents
     couchGet,
+    couchRev,
+    -- * Manipulating documents
     couchPut,
     couchPut',
-    couchRev,
     couchDelete,
-    -- * Views
-    toType,
+    -- * Working with views #view#
+    toType
 ) where
 
 import              Data.Generics (Data)

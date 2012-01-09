@@ -3,19 +3,33 @@
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE FlexibleContexts #-}
 
--- | 
---   
---   For complete documentation about The Couch DB HTTP API see
---   <http://wiki.apache.org/couchdb/Complete_HTTP_API_Reference>
+{- | 
+To work with concrete objects, use the following modules:
+  
+  * "Database.CouchDB.Conduit.DB"
+  
+  * "Database.CouchDB.Conduit.View"
+  
+  * "Database.CouchDB.Conduit.Explicit"
+  
+  * "Database.CouchDB.Conduit.Generic"
+  
+  * "Database.CouchDB.Conduit.LowLevel"
+   
+For complete documentation about The Couch DB HTTP API see
+<http://wiki.apache.org/couchdb/Complete_HTTP_API_Reference>
+-}
+
+
 
 module Database.CouchDB.Conduit (
-    -- * Document paths and revisions
-    -- $docPath
+    -- * Document paths and revisions #path#
+    -- $path
     Path,
     mkPath,
     Revision,
     
-    -- * CouchDB Connection
+    -- * CouchDB Connection #connection#
     CouchConnection,
     def,
     couchHost,
@@ -23,7 +37,7 @@ module Database.CouchDB.Conduit (
     couchManager,
     couchDB,
     
-    -- * Runtime enviroment and errors
+    -- * Runtime enviroment and errors #runtime#
     -- $runtime
     MonadCouch (..),
     CouchError (..),
@@ -51,7 +65,7 @@ import qualified    Blaze.ByteString.Builder as BLB
 -- Paths
 -----------------------------------------------------------------------------
 
--- $docPath
+-- $path 
 -- As a rule, full path to document in CouchDB is just URL path. But there is 
 -- one subtlety. For example, document ids /can/ contain slashes. But, 
 -- to work with such objects, path fragments must be escaped.
@@ -78,6 +92,10 @@ mkPath :: [Path]    -- ^ Path fragments be escaped.
        -> Path
 mkPath = BLB.toByteString . HT.encodePathSegments . 
     map TE.decodeUtf8 . filter (/="")
+
+-----------------------------------------------------------------------------
+-- Connection
+-----------------------------------------------------------------------------
 
 -- | Represents a single connection to CouchDB server. The constructor for this 
 --   data type is not exposed. Instead, you should use either the 'def' method 
@@ -156,70 +174,4 @@ withCouchConnection c@(CouchConnection _ _ mayMan _) f =
     case mayMan of
         Nothing -> H.withManager $ \m -> lift $ f $ c {couchManager = Just m}
         Just m -> runResourceT $ lift $ f $ c {couchManager = Just m}
-     
----- | CouchDB response
---type CouchResponse m = H.Response (BufferedSource m B.ByteString)
---
----- | The most general method of accessing CouchDB.  This is a very thin wrapper 
-----   around 'H.http'.  Most of the time you should use one of the other access 
-----   functions, but this function is needed for example to write and read 
-----   attachments that are not in JSON format.
---couch :: MonadCouch m =>
---       HT.Method                -- ^ Method
---    -> Path                     -- ^ Path
---    -> HT.RequestHeaders        -- ^ Headers
---    -> HT.Query                 -- ^ Query args
---    -> H.RequestBody m          -- ^ Request body
---    -> (CouchResponse m -> ResourceT m (CouchResponse m))
---                                -- ^ Protect function. See 'protect'
---    -> ResourceT m (CouchResponse m)
---couch meth path hdrs qs reqBody protectFn = do
---    conn <- lift couchConnection
---    let req = H.def 
---            { H.method          = meth
---            , H.host            = couchHost conn
---            , H.requestHeaders  = hdrs
---            , H.port            = couchPort conn
---            , H.path            = B.intercalate "/" . filter (/="") $ 
---                                        [couchDB conn, path]
---            , H.queryString     = HT.renderQuery False qs
---            , H.requestBody     = reqBody
---            , H.checkStatus = const . const $ Nothing }
---    -- FIXME fromMaybe
---    res <- H.http req (fromJust $ couchManager conn)
---    protectFn res 
---
----- | Protect 'H.Response' from bad status codes. If status code in list 
-----   of status codes - just return response. Otherwise - throw 'CouchError'.
-----   
-----   Instead 'H.checkStatus', 'protect' parses CouchDB response body JSON and
-----   extract \"reason\" message.
-----   
-----   To protect from typical errors use 'protect''.
---protect :: MonadCouch m => 
---       [Int]                                        -- ^ Good codes
---    -> CouchResponse m   -- ^ Response
---    -> ResourceT m (CouchResponse m)
---protect goodCodes ~resp@(H.Response (HT.Status sc sm) _ bsrc)  
---    | sc `elem` goodCodes = return resp
---    | otherwise = do
---        v <- catch (bsrc $$ sinkParser json)
---                   (\(_::SomeException) -> return Null)
---        liftBase $ resourceThrow $ CouchError (Just sc) $ msg v
---        where 
---        msg v = BU8.toString sm ++ reason v
---        reason (Object v) = case M.lookup "reason" v of
---                Just (String t) -> ": " ++ T.unpack t
---                _                 -> ""
---        reason _ = []
---
----- | Protect from typical status codes: 200, 201, 202 and 304. See 'protect'
-----   fo details.       
---protect' :: MonadCouch m => 
---       CouchResponse m   -- ^ Response
---    -> ResourceT m (CouchResponse m)
---protect' = protect [200, 201, 202, 304]
---
---
---
---
+

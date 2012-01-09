@@ -1,10 +1,13 @@
 {-# LANGUAGE OverloadedStrings #-} 
 {-# LANGUAGE DeriveDataTypeable, ScopedTypeVariables #-} 
 
+-- | Higher-level functions to interact with CouchDB views.
+
 module Database.CouchDB.Conduit.View 
 (
     -- * Running views
     couchView,
+    couchView',
     rowValue,
     -- * Manipulating views
     couchViewPut
@@ -12,11 +15,9 @@ module Database.CouchDB.Conduit.View
  where
 
 import              Prelude hiding (catch)
-
 import              Control.Exception.Lifted (catch)
 
 import              Control.Monad.Trans.Class (lift)
---import              Control.Monad.IO.Class (liftIO)
 import              Control.Applicative ((<|>))
 
 import              Data.Default
@@ -38,21 +39,48 @@ import              Database.CouchDB.Conduit
 import              Database.CouchDB.Conduit.LowLevel (couch, protect')
 import qualified    Database.CouchDB.Conduit.Generic as CCG
 
--- | Run CouchDB view.
+
+-----------------------------------------------------------------------------
+-- Running
+-----------------------------------------------------------------------------
+
+-- | Run CouchDB view inside 'ResourceT' monad.
+--
+-- > runCouch def {couchDB="mydb"} $ runResourceT $ do
+-- >     src <- couchView "mydesign" "myview" [] 
+-- >     src $$ CL.mapM_ (liftIO . print)
 couchView :: MonadCouch m =>
        Path                 -- ^ Design document
     -> Path                 -- ^ View name
-    -> HT.Query             -- ^ Query
-    -> Sink A.Object m a    -- ^ Sink for handle view rows
+    -> HT.Query             -- ^ Query parameters
+    -> ResourceT m (Source m A.Object)
+couchView designDocName viewName q =  do
+    H.Response _ _ bsrc <- couch HT.methodGet fullPath [] q 
+        (H.RequestBodyBS B.empty) protect'
+    return $ bsrc $= conduitCouchView
+  where
+    fullPath = B.concat ["_design/", designDocName, "/_view/", viewName]
+
+-- | Brain-free version of 'runCouch'.
+couchView' :: MonadCouch m =>
+       Path                 -- ^ Design document
+    -> Path                 -- ^ View name
+    -> HT.Query             -- ^ Query parameters
+    -> Sink A.Object m a    
+        -- ^ Sink for handle view rows. It can be composed from many conduits 
+        --   and sinks, such as 'rowValue', view conduits from 
+        --   "Database.CouchDB.Conduit.Explicit#view" and
+        --   "Database.CouchDB.Conduit.Generic#view", and many others. See 
+        --   "Data.Conduit" for details and documentation.
     -> m a
-couchView designDocName viewName q sink = runResourceT $ do
-    H.Response _ _ bsrc <-  couch HT.methodGet fullPath [] q 
+couchView' designDocName viewName q sink = runResourceT $ do
+    H.Response _ _ bsrc <- couch HT.methodGet fullPath [] q 
         (H.RequestBodyBS B.empty) protect'
     bsrc $= conduitCouchView $$ sink
   where
     fullPath = B.concat ["_design/", designDocName, "/_view/", viewName]
 
--- | Conduit for extract \"value\" field.
+-- | Conduit for extract \"value\" field from CouchDB view row.
 rowValue :: ResourceIO m => Conduit A.Object m A.Value
 rowValue = CL.mapM (\v -> case M.lookup "value" v of
                 (Just o) -> return o

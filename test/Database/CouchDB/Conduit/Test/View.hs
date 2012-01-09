@@ -8,7 +8,7 @@ import Test.Framework (testGroup, mutuallyExclusive, Test)
 import Test.Framework.Providers.HUnit (testCase)
 import Test.HUnit (Assertion)
 
---import Control.Monad.Trans.Class (lift)
+import Control.Monad.Trans.Class (lift)
 import Control.Monad.IO.Class (liftIO)
 
 import              Data.Generics (Data, Typeable)
@@ -20,7 +20,7 @@ import Database.CouchDB.Conduit.View
 
 tests :: Test
 tests = mutuallyExclusive $ testGroup "View" [
-    testCase "Basic" case_manip
+    testCase "Basic" case_basicViewM
 --    testCase "Basic" case_basicView,
 --    testCase "Basic with reduce" case_basicViewReduce
     ]
@@ -39,19 +39,29 @@ case_manip = runCouch conn $ do
             "function(doc) {emit(null, doc);}" Nothing
     liftIO $ print (r', r'')
 
+case_basicViewM :: Assertion
+case_basicViewM = runCouch conn $ runResourceT $ do
+    s <- couchView "test" "group1" [("reduce", Just "false")] 
+    _ <- s $= (CL.mapM (liftIO . print)) $$ CL.consume
+    s' <- couchView "test" "group1" [("reduce", Just "false")]
+    _ <- s' $= rowValue $$ CL.mapM_ (liftIO . print)
+    res' <- lift $ couchView' "test" "group1" [("reduce", Just "false")] $ 
+        rowValue =$ CL.consume
+    liftIO $ print res'
+
 case_basicView :: Assertion
-case_basicView = runCouch conn $ do
-    _ <- couchView "test" "group1" [("reduce", Just "false")] $ 
+case_basicView = runCouch conn $  do
+    _ <- couchView' "test" "group1" [("reduce", Just "false")] $ 
         (CL.mapM (liftIO . print)) =$ CL.consume
-    _ <- couchView "test" "group1" [("reduce", Just "false")] $ 
+    _ <- couchView' "test" "group1" [("reduce", Just "false")] $ 
         rowValue =$ CL.mapM_ (liftIO . print)
-    res' <- couchView "test" "group1" [("reduce", Just "false")] $ 
+    res' <- couchView' "test" "group1" [("reduce", Just "false")] $ 
         rowValue =$ CL.consume
     liftIO $ print res'
 
 case_basicViewReduce :: Assertion
 case_basicViewReduce = runCouch conn $ do
-    res <- couchView "test" "group1" [] $ 
+    res <- couchView' "test" "group1" [] $ 
         CL.mapM (liftIO . print) =$ CL.consume
     liftIO $ print res
     
