@@ -19,7 +19,7 @@ import qualified    Data.ByteString as B
 import qualified    Data.ByteString.Lazy as BL
 import qualified    Data.Text.Encoding as TE
 import qualified    Data.Aeson as A
-import              Data.Conduit (runResourceT, resourceThrow, ($$))
+import              Data.Conduit (ResourceT, resourceThrow, ($$))
 import qualified    Data.Conduit.Attoparsec as CA
 import qualified    Network.HTTP.Conduit as H
 import              Network.HTTP.Types as HT
@@ -35,8 +35,8 @@ import              Database.CouchDB.Conduit.Internal.Parser
 -- | Get Revision of a document. 
 couchRev :: MonadCouch m => 
        Path 
-    -> m Revision
-couchRev p = runResourceT $ do
+    -> ResourceT m Revision
+couchRev p = do
     (H.Response _ hs _) <- couch HT.methodHead p [] [] 
             (H.RequestBodyBS B.empty)
             protect'
@@ -48,8 +48,8 @@ couchRev p = runResourceT $ do
 couchDelete :: MonadCouch m => 
        Path 
     -> Revision
-    -> m ()
-couchDelete p r = runResourceT $ couch HT.methodDelete p 
+    -> ResourceT m ()
+couchDelete p r = couch HT.methodDelete p 
                [] [("rev", Just r)]
                (H.RequestBodyBS B.empty)
                protect' >> return ()
@@ -62,8 +62,8 @@ couchDelete p r = runResourceT $ couch HT.methodDelete p
 couchGetRaw :: MonadCouch m => 
        Path         -- ^ Document path
     -> HT.Query     -- ^ Query
-    -> m A.Value
-couchGetRaw p q = runResourceT $ do
+    -> ResourceT m A.Value
+couchGetRaw p q = do
     H.Response _ _ bsrc <- couch HT.methodGet p [] q 
             (H.RequestBodyBS B.empty) protect'
     bsrc $$ CA.sinkParser A.json
@@ -77,8 +77,8 @@ couchGetWith :: MonadCouch m =>
           (A.Value -> A.Result a)       -- ^ Parser
        -> Path                          -- ^ Path
        -> Query                         -- ^ Query
-       -> m (Revision, a)
-couchGetWith f p q = runResourceT $ do
+       -> ResourceT m (Revision, a)
+couchGetWith f p q = do
     H.Response _ _ bsrc <- couch HT.methodGet p [] q 
             (H.RequestBodyBS B.empty) protect'
     j <- bsrc $$ CA.sinkParser A.json
@@ -94,8 +94,8 @@ couchPutWith :: MonadCouch m =>
                                 -- ^ empty string.
        -> Query                 -- ^ Query arguments.
        -> a                     -- ^ The object to store.
-       -> m Revision
-couchPutWith f p r q val = runResourceT $ do
+       -> ResourceT m Revision
+couchPutWith f p r q val = do
     H.Response _ _ bsrc <- couch HT.methodPut p (ifMatch r) q 
             (H.RequestBodyLBS $ f val) protect'
     j <- bsrc $$ CA.sinkParser A.json
@@ -110,11 +110,11 @@ couchPutWith' :: MonadCouch m =>
      -> Path        -- ^ Document path.
      -> HT.Query    -- ^ Query arguments.
      -> a           -- ^ The object to store.
-     -> m Revision      
+     -> ResourceT m Revision      
 couchPutWith' f p q val = do
     rev <- catch (couchRev p) handler404
     couchPutWith f p rev q val
   where 
     handler404 (CouchError (Just 404) _) = return ""
-    handler404 e = resourceThrow e
+    handler404 e = lift $ resourceThrow e
 

@@ -44,7 +44,7 @@ import qualified    Database.CouchDB.Conduit.Generic as CCG
 -- Running
 -----------------------------------------------------------------------------
 
--- | Run CouchDB view inside 'ResourceT' monad.
+-- | Run CouchDB view inside monad.
 --
 -- > runCouch def {couchDB="mydb"} $ runResourceT $ do
 -- >     src <- couchView "mydesign" "myview" [] 
@@ -72,8 +72,8 @@ couchView' :: MonadCouch m =>
         --   "Database.CouchDB.Conduit.Explicit#view" and
         --   "Database.CouchDB.Conduit.Generic#view", and many others. See 
         --   "Data.Conduit" for details and documentation.
-    -> m a
-couchView' designDocName viewName q sink = runResourceT $ do
+    -> ResourceT m a
+couchView' designDocName viewName q sink = do
     H.Response _ _ bsrc <- couch HT.methodGet fullPath [] q 
         (H.RequestBodyBS B.empty) protect'
     bsrc $= conduitCouchView $$ sink
@@ -111,12 +111,12 @@ couchViewPut :: MonadCouch m =>
     -> B.ByteString         -- ^ Language. \"javascript\" for example.
     -> B.ByteString         -- ^ 
     -> Maybe B.ByteString
-    -> m Revision
+    -> ResourceT m Revision
 couchViewPut designDocName viewName lang mapFn reduceFn = do
     (rev, dd@(CouchDesignDoc l vs)) <- catch
         (CCG.couchGet fullPath [])
         (\(_ :: CouchError) -> return (B.empty, def))
-    if lang /= l then resourceThrow $ CouchError Nothing "Wrong language"
+    if lang /= l then lift $ resourceThrow $ CouchError Nothing "Wrong language"
         else CCG.couchPut fullPath rev [] $
                 dd { views = Map.insert viewName constructView vs}
   where

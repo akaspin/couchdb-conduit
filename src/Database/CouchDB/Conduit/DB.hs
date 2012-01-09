@@ -21,19 +21,20 @@ import Control.Exception.Lifted (catch)
 
 import qualified Data.ByteString as B
 
-import Data.Conduit (runResourceT, resourceThrow)
+import Data.Conduit (ResourceT, resourceThrow)
 
 import qualified Network.HTTP.Conduit as H
 import qualified Network.HTTP.Types as HT
 
 import Database.CouchDB.Conduit (MonadCouch(..), CouchError(..), Path)
 import Database.CouchDB.Conduit.LowLevel (couch, protect')
+import Control.Monad.Trans.Class (lift)
 
 -- | Create CouchDB database.
 couchPutDB :: MonadCouch m =>
        Path     -- ^ CouchDB Database name. See note above. 
-    -> m ()
-couchPutDB p = runResourceT $ couch HT.methodPut p [] []
+    -> ResourceT m ()
+couchPutDB p = couch HT.methodPut p [] []
                     (H.RequestBodyBS B.empty) protect'
                     >> return ()
 
@@ -41,17 +42,17 @@ couchPutDB p = runResourceT $ couch HT.methodPut p [] []
 --   of presence. Catches 'CouchError' @412@.
 couchPutDB' :: MonadCouch m =>
        Path     -- ^ CouchDB Database name. See note above. 
-    -> m ()
+    -> ResourceT m ()
 couchPutDB' p = 
     catch (couchPutDB p) handler
   where
     handler (CouchError (Just 412) _) = return ()
-    handler e = resourceThrow e
+    handler e = lift $ resourceThrow e
 
 -- | Delete a database.
 couchDeleteDB :: MonadCouch m => 
        Path     -- ^ CouchDB Database name. See note above. 
-    -> m ()
-couchDeleteDB p = runResourceT $ couch HT.methodDelete p [] []
+    -> ResourceT m ()
+couchDeleteDB p = couch HT.methodDelete p [] []
                     (H.RequestBodyBS B.empty) protect'
                     >> return ()

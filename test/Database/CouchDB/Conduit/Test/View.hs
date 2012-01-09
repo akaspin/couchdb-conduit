@@ -8,7 +8,7 @@ import Test.Framework (testGroup, mutuallyExclusive, Test)
 import Test.Framework.Providers.HUnit (testCase)
 import Test.HUnit (Assertion)
 
-import Control.Monad.Trans.Class (lift)
+--import Control.Monad.Trans.Class (lift)
 import Control.Monad.IO.Class (liftIO)
 
 import              Data.Generics (Data, Typeable)
@@ -17,6 +17,7 @@ import qualified Data.Conduit.List as CL
 
 import Database.CouchDB.Conduit
 import Database.CouchDB.Conduit.View
+import Control.Monad.Trans.Reader (runReaderT)
 
 tests :: Test
 tests = mutuallyExclusive $ testGroup "View" [
@@ -40,12 +41,12 @@ case_manip = runCouch conn $ do
     liftIO $ print (r', r'')
 
 case_basicViewM :: Assertion
-case_basicViewM = runCouch conn $ runResourceT $ do
+case_basicViewM = withCouchConnection conn . runReaderT . runResourceT $ do
     s <- couchView "test" "group1" [("reduce", Just "false")] 
     _ <- s $= (CL.mapM (liftIO . print)) $$ CL.consume
     s' <- couchView "test" "group1" [("reduce", Just "false")]
     _ <- s' $= rowValue $$ CL.mapM_ (liftIO . print)
-    res' <- lift $ couchView' "test" "group1" [("reduce", Just "false")] $ 
+    res' <- couchView' "test" "group1" [("reduce", Just "false")] $ 
         rowValue =$ CL.consume
     liftIO $ print res'
 

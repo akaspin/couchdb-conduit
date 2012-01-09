@@ -16,7 +16,7 @@ module Database.CouchDB.Conduit.Generic (
 import              Data.Generics (Data)
 import qualified    Data.Aeson as A
 import qualified    Data.Aeson.Generic as AG
-import              Data.Conduit (Conduit(..), ResourceIO)
+import              Data.Conduit (ResourceT, Conduit(..), ResourceIO)
 
 import qualified    Network.HTTP.Types as HT
 
@@ -28,7 +28,7 @@ import              Database.CouchDB.Conduit.Internal.View
 couchGet :: (MonadCouch m, Data a) => 
        Path         -- ^ Document path
     -> HT.Query     -- ^ Query
-    -> m (Revision, a)
+    -> ResourceT m (Revision, a)
 couchGet = couchGetWith AG.fromJSON  
 
 -- | Put an object in Couch DB with revision, returning the new Revision.
@@ -37,7 +37,7 @@ couchPut :: (MonadCouch m, Data a) =>
      -> Revision    -- ^ Document revision. For new docs provide empty string.
      -> HT.Query    -- ^ Query arguments.
      -> a           -- ^ The object to store.
-     -> m Revision      
+     -> ResourceT m Revision      
 couchPut = couchPutWith AG.encode
     
 -- | Brute force version of 'couchPut'.
@@ -45,7 +45,7 @@ couchPut' :: (MonadCouch m, Data a) =>
         Path        -- ^ Document path.
      -> HT.Query    -- ^ Query arguments.
      -> a           -- ^ The object to store.
-     -> m Revision      
+     -> ResourceT m Revision      
 couchPut' = couchPutWith' AG.encode
 
 ------------------------------------------------------------------------------

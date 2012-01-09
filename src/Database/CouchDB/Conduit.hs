@@ -2,6 +2,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE MultiParamTypeClasses, UndecidableInstances #-}
 
 {- | 
 To work with concrete objects, use the following modules:
@@ -49,8 +50,12 @@ module Database.CouchDB.Conduit (
 import              Control.Monad.Trans.Reader (ReaderT, ask, runReaderT)
 import              Control.Exception (Exception)
 import              Control.Monad.Trans.Class (lift)
+import Control.Monad.Trans.Control
+    ( MonadTransControl (..)
+    )
+--import Control.Monad.IO.Class (MonadIO)
 
-import              Data.Conduit (ResourceIO, runResourceT)
+import              Data.Conduit (ResourceIO, ResourceThrow, ResourceT, runResourceT)
 
 import qualified    Network.HTTP.Conduit as H
 import qualified    Network.HTTP.Types as HT
@@ -141,8 +146,14 @@ instance Default CouchConnection where
 class ResourceIO m => MonadCouch m where
     couchConnection :: m CouchConnection
 
-instance ResourceIO m => MonadCouch (ReaderT CouchConnection m) where
+instance (ResourceIO m) => MonadCouch (ReaderT CouchConnection m) where
     couchConnection = ask
+
+--instance Monad m => MonadCouch (ResourceT m) 
+
+--instance ResourceIO m => MonadCouch (ResourceT m)
+
+--instance (ResourceIO m, ResourceThrow (ResourceT m)) => MonadCouch (ResourceT m)
 
 -- | A Couch DB Error. If the error comes from http, the http status code 
 --   is also given. Non-http errors include things like errors  
@@ -156,15 +167,15 @@ instance Exception CouchError
 --  
 --   If you create your own instance of 'MonadCouch', use 'withCouchConnection'.  
 runCouch :: ResourceIO m =>
-       CouchConnection              -- ^ Couch connection
-    -> ReaderT CouchConnection m a  -- ^ CouchDB actions
+       CouchConnection                            -- ^ Couch connection
+    -> ResourceT (ReaderT CouchConnection m) a    -- ^ CouchDB actions
     -> m a
-runCouch c = withCouchConnection c . runReaderT
+runCouch c = withCouchConnection c . runReaderT . runResourceT
 
 -- | Connect to a CouchDB server, call the supplied function, and then close 
 --   the connection.
 -- 
--- > withCouchConnection def {couchDB = "db"} $ runReaderT $ do
+-- > withCouchConnection def {couchDB = "db"} . runReaderT . runResourceT $ do
 -- >    ... -- actions
 withCouchConnection :: ResourceIO m =>
        CouchConnection              -- ^ Couch connection
