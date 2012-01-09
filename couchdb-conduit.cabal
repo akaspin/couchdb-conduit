@@ -50,6 +50,7 @@ library
                     Database.CouchDB.Conduit.DB,
                     Database.CouchDB.Conduit.Explicit,
                     Database.CouchDB.Conduit.Generic,
+                    Database.CouchDB.Conduit.LowLevel,
                     Database.CouchDB.Conduit.View
   other-modules:    
                     Database.CouchDB.Conduit.Internal.Doc,

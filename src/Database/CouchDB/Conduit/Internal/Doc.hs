@@ -25,6 +25,7 @@ import qualified    Network.HTTP.Conduit as H
 import              Network.HTTP.Types as HT
 
 import              Database.CouchDB.Conduit
+import              Database.CouchDB.Conduit.LowLevel (couch, protect')
 import              Database.CouchDB.Conduit.Internal.Parser
 
 ------------------------------------------------------------------------------

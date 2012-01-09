@@ -35,6 +35,7 @@ import qualified    Network.HTTP.Conduit as H
 import qualified    Network.HTTP.Types as HT
 
 import              Database.CouchDB.Conduit
+import              Database.CouchDB.Conduit.LowLevel (couch, protect')
 import qualified    Database.CouchDB.Conduit.Generic as CCG
 
 -- | Run CouchDB view.
