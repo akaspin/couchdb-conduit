@@ -23,7 +23,8 @@ module Database.CouchDB.Conduit (
     couchManager,
     couchDB,
     
-    -- * Running enviroment and errors
+    -- * Runtime enviroment and errors
+    -- $runtime
     MonadCouch (..),
     CouchError (..),
     runCouch,
@@ -104,11 +105,19 @@ instance Default CouchConnection where
     def = CouchConnection "localhost" 5984 Nothing B.empty
 
 -----------------------------------------------------------------------------
--- Paths
+-- Runtime
 -----------------------------------------------------------------------------
 
--- $run
+-- $runtime
+-- All functions to access CouchDB require a 'MonadCouch' instance to 
+-- access the connection information.  'ReaderT' is an instance of 
+-- 'MonadCouch', and /runCouch/ runs a sequence of database actions using 
+-- 'ReaderT'.
 -- 
+-- If your db code is part of a larger monad, it makes sense to just make the 
+-- larger monad an instance of 'MonadCouch' and skip the intermediate ReaderT, 
+-- since then performance is improved by eliminating one monad from the final 
+-- transformer stack.
 
 -- | A monad which allows access to the connection.
 class ResourceIO m => MonadCouch m where
@@ -124,20 +133,10 @@ data CouchError = CouchError (Maybe Int) String
     deriving (Show, Typeable)
 instance Exception CouchError
 
--- | Run a sequence of CouchDB actions.
---
---   The functions below to access CouchDB require a 'MonadCouch' instance to 
---   access the connection information.  'ReaderT' is an instance of 
---   'MonadCouch', and /runCouch/ runs a sequence of database actions using 
---   'ReaderT'.  See the top of this page for an example using /runCouch/.
---
---   The main reason to not use /runCouch/ is to obtain more control over 
---   connection pooling. Also, if your db code is part of a larger monad, it 
---   makes sense to just make the larger monad an instance of 'MonadCouch' and 
---   skip the intermediate ReaderT, since then performance is improved by 
---   eliminating one monad from the final transformer stack.
---
---   This function is a combination of 'withCouchConnection' and 'runReaderT'
+-- | Run a sequence of CouchDB actions. This function is a combination of 
+--   'withCouchConnection' and 'runReaderT'.
+--  
+--   If you create your own instance of 'MonadCouch', use 'withCouchConnection'.  
 runCouch :: ResourceIO m =>
        CouchConnection              -- ^ Couch connection
     -> ReaderT CouchConnection m a  -- ^ CouchDB actions
@@ -146,9 +145,6 @@ runCouch c = withCouchConnection c . runReaderT
 
 -- | Connect to a CouchDB server, call the supplied function, and then close 
 --   the connection.
--- 
---   If you create your own instance of 'MonadCouch' instead of using 
---   'runCouch', this function will help you create the 'CouchConnection'. 
 -- 
 -- > withCouchConnection def {couchDB = "db"} $ runReaderT $ do
 -- >    ... -- actions
