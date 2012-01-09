@@ -54,7 +54,7 @@ couchView :: MonadCouch m =>
     -> Path                 -- ^ View name
     -> HT.Query             -- ^ Query parameters
     -> ResourceT m (Source m A.Object)
-couchView designDocName viewName q =  do
+couchView designDocName viewName q = do
     H.Response _ _ bsrc <- couch HT.methodGet fullPath [] q 
         (H.RequestBodyBS B.empty) protect'
     return $ bsrc $= conduitCouchView
