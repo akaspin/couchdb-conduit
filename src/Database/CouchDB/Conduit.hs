@@ -2,7 +2,6 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE FlexibleContexts #-}
-{-# LANGUAGE MultiParamTypeClasses, UndecidableInstances #-}
 
 {- | 
 To work with concrete objects, use the following modules:
@@ -50,12 +49,8 @@ module Database.CouchDB.Conduit (
 import              Control.Monad.Trans.Reader (ReaderT, ask, runReaderT)
 import              Control.Exception (Exception)
 import              Control.Monad.Trans.Class (lift)
-import Control.Monad.Trans.Control
-    ( MonadTransControl (..)
-    )
---import Control.Monad.IO.Class (MonadIO)
 
-import              Data.Conduit (ResourceIO, ResourceThrow, ResourceT, runResourceT)
+import              Data.Conduit (ResourceIO, ResourceT, runResourceT)
 
 import qualified    Network.HTTP.Conduit as H
 import qualified    Network.HTTP.Types as HT
@@ -148,12 +143,6 @@ class ResourceIO m => MonadCouch m where
 
 instance (ResourceIO m) => MonadCouch (ReaderT CouchConnection m) where
     couchConnection = ask
-
---instance Monad m => MonadCouch (ResourceT m) 
-
---instance ResourceIO m => MonadCouch (ResourceT m)
-
---instance (ResourceIO m, ResourceThrow (ResourceT m)) => MonadCouch (ResourceT m)
 
 -- | A Couch DB Error. If the error comes from http, the http status code 
 --   is also given. Non-http errors include things like errors  
