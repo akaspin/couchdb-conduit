@@ -20,8 +20,6 @@ For complete documentation about The Couch DB HTTP API see
 <http://wiki.apache.org/couchdb/Complete_HTTP_API_Reference>
 -}
 
-
-
 module Database.CouchDB.Conduit (
     -- * Document paths and revisions #path#
     -- $path
@@ -130,7 +128,7 @@ instance Default CouchConnection where
 -- All functions to access CouchDB require a 'MonadCouch' instance to 
 -- access the connection information.  'ReaderT' is an instance of 
 -- 'MonadCouch', and /runCouch/ runs a sequence of database actions using 
--- 'ReaderT'.
+-- 'ReaderT' and 'ResourceT'.
 -- 
 -- If your db code is part of a larger monad, it makes sense to just make the 
 -- larger monad an instance of 'MonadCouch' and skip the intermediate ReaderT, 
@@ -152,7 +150,7 @@ data CouchError = CouchError (Maybe Int) String
 instance Exception CouchError
 
 -- | Run a sequence of CouchDB actions. This function is a combination of 
---   'withCouchConnection' and 'runReaderT'.
+--   'withCouchConnection', 'runReaderT' and 'runResourceT'.
 --  
 --   If you create your own instance of 'MonadCouch', use 'withCouchConnection'.  
 runCouch :: ResourceIO m =>

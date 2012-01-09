@@ -5,7 +5,8 @@
 
 module Database.CouchDB.Conduit.View 
 (
-    -- * Running views
+    -- * Acccessing views #run#
+    -- $run
     couchView,
     couchView',
     rowValue,
@@ -39,16 +40,34 @@ import              Database.CouchDB.Conduit
 import              Database.CouchDB.Conduit.LowLevel (couch, protect')
 import qualified    Database.CouchDB.Conduit.Generic as CCG
 
-
 -----------------------------------------------------------------------------
 -- Running
 -----------------------------------------------------------------------------
 
--- | Run CouchDB view inside monad.
+-- $run
+-- In contrast to the functions of access to documents that are loaded into 
+-- memory entirely. 'couchView' and 'couchView'' combines the incredible power 
+-- of /http-conduit/ and /attoparsec/ to allow you to process objects in 
+-- constant space.  
 --
--- > runCouch def {couchDB="mydb"} $ runResourceT $ do
+-- As data is read from the network, it is fed into attoparsec. When 
+-- attoparsec completes parsing row, it sent to 'Sink'. 'Sink' can be composed 
+-- from many conduits with sink at the end, such as 'rowValue', view conduits 
+-- from "Database.CouchDB.Conduit.Explicit#view" and 
+-- "Database.CouchDB.Conduit.Generic#view", and many others. See 
+-- "Data.Conduit" for details and documentation.
+
+-- | Run CouchDB view in manner like 'H.http'.
+--
+-- > runCouch def {couchDB="mydb"} $ do
+-- >
+-- >     -- Print all upon receipt.
 -- >     src <- couchView "mydesign" "myview" [] 
 -- >     src $$ CL.mapM_ (liftIO . print)
+-- >
+-- >     -- ... Or extract row value and consume
+-- >     src' <- couchView "mydesign" "myview" [] 
+-- >     res <- src' $= rowValue $$ CL.consume
 couchView :: MonadCouch m =>
        Path                 -- ^ Design document
     -> Path                 -- ^ View name
@@ -61,17 +80,20 @@ couchView designDocName viewName q = do
   where
     fullPath = B.concat ["_design/", designDocName, "/_view/", viewName]
 
--- | Brain-free version of 'runCouch'.
+-- | Brain-free version of 'runCouch'. Takes 'Sink' to consume response.
+--
+-- > runCouch def {couchDB="mydb"} $ do
+-- >
+-- >     -- Print all upon receipt.
+-- >     couchView' "mydesign" "myview" [] $ CL.mapM_ (liftIO . print)
+-- >
+-- >     -- ... Or extract row value and consume
+-- >     res <- couchView' "mydesign" "myview" [] $ rowValue =$ CL.consume
 couchView' :: MonadCouch m =>
        Path                 -- ^ Design document
     -> Path                 -- ^ View name
     -> HT.Query             -- ^ Query parameters
-    -> Sink A.Object m a    
-        -- ^ Sink for handle view rows. It can be composed from many conduits 
-        --   and sinks, such as 'rowValue', view conduits from 
-        --   "Database.CouchDB.Conduit.Explicit#view" and
-        --   "Database.CouchDB.Conduit.Generic#view", and many others. See 
-        --   "Data.Conduit" for details and documentation.
+    -> Sink A.Object m a    -- ^ Sink for handle view rows.
     -> ResourceT m a
 couchView' designDocName viewName q sink = do
     H.Response _ _ bsrc <- couch HT.methodGet fullPath [] q 
