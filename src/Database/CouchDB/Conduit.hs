@@ -170,6 +170,7 @@ withCouchConnection :: ResourceIO m =>
     -> m a
 withCouchConnection c@(CouchConnection _ _ mayMan _) f = 
     case mayMan of
+        -- Allocate manager with helper
         Nothing -> H.withManager $ \m -> lift $ f $ c {couchManager = Just m}
-        Just m -> runResourceT $ lift $ f $ c {couchManager = Just m}
+        _ -> f c
 
