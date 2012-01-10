@@ -82,7 +82,7 @@ couchGetWith f p q = do
     H.Response _ _ bsrc <- couch HT.methodGet p [] q 
             (H.RequestBodyBS B.empty) protect'
     j <- bsrc $$ CA.sinkParser A.json
-    A.String r <- lift $ extractField "_rev" j
+    A.String r <- lift $ either resourceThrow return $ extractField "_rev" j
     o <- lift $ jsonToTypeWith f j 
     return (TE.encodeUtf8 r, o)
 
@@ -99,7 +99,7 @@ couchPutWith f p r q val = do
     H.Response _ _ bsrc <- couch HT.methodPut p (ifMatch r) q 
             (H.RequestBodyLBS $ f val) protect'
     j <- bsrc $$ CA.sinkParser A.json
-    lift $ extractRev j
+    lift $ either resourceThrow return $ extractRev j
   where 
     ifMatch "" = []
     ifMatch rv = [("If-Match", rv)]

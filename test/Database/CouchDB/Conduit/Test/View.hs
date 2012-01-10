@@ -6,24 +6,33 @@ module Database.CouchDB.Conduit.Test.View where
 
 import Test.Framework (testGroup, mutuallyExclusive, Test)
 import Test.Framework.Providers.HUnit (testCase)
-import Test.HUnit (Assertion)
+import Test.HUnit (Assertion, (@=?))
+import Database.CouchDB.Conduit.Test.Util (setupDB, tearDB)
 
 --import Control.Monad.Trans.Class (lift)
+import Control.Exception.Lifted (bracket_)
 import Control.Monad.IO.Class (liftIO)
+import Control.Applicative ((<$>), (<*>), empty)
 
-import              Data.Generics (Data, Typeable)
+import qualified Data.ByteString as B
+import Data.ByteString.UTF8 (fromString)
+import Data.Aeson ((.:), (.=))
+import qualified Data.Aeson as A
+--import qualified Data.Aeson.Generic as AG
+import Data.Generics (Data, Typeable)
 import Data.Conduit
 import qualified Data.Conduit.List as CL
 
 import Database.CouchDB.Conduit
+import qualified Database.CouchDB.Conduit.Generic as CCG
+import Database.CouchDB.Conduit.DB
 import Database.CouchDB.Conduit.View
-import Control.Monad.Trans.Reader (runReaderT)
 
 tests :: Test
 tests = mutuallyExclusive $ testGroup "View" [
-    testCase "Basic" case_basicViewM
---    testCase "Basic" case_basicView,
---    testCase "Basic with reduce" case_basicViewReduce
+    testCase "Create" case_createView,
+    testCase "Big values parsing" case_bigValues,
+    testCase "View with reduce" case_withReduce
     ]
 
 data T = T {
@@ -32,39 +41,61 @@ data T = T {
     strV :: String
     } deriving (Show, Eq, Data, Typeable)
 
-case_manip :: Assertion
-case_manip = runCouch conn $ do
-    r' <- couchViewPut "test" "group3" "javascript" 
-            "function(doc) {emit(null, doc);}" Nothing
-    r'' <- couchViewPut "test1" "group3" "javascript" 
-            "function(doc) {emit(null, doc);}" Nothing
-    liftIO $ print (r', r'')
+instance A.FromJSON T where
+   parseJSON (A.Object v) = T <$> v .: "kind" <*> v .: "intV" <*> v .: "strV"
+   parseJSON _          = empty
+   
+instance A.ToJSON T where
+   toJSON (T k i s) = A.object ["kind" .= k, "intV" .= i, "strV" .= s]
 
-case_basicViewM :: Assertion
-case_basicViewM = withCouchConnection conn . runReaderT . runResourceT $ do
-    s <- couchView "test" "group1" [("reduce", Just "false")] 
-    _ <- s $= (CL.mapM (liftIO . print)) $$ CL.consume
-    s' <- couchView "test" "group1" [("reduce", Just "false")]
-    _ <- s' $= rowValue $$ CL.mapM_ (liftIO . print)
-    res' <- couchView' "test" "group1" [("reduce", Just "false")] $ 
-        rowValue =$ CL.consume
-    liftIO $ print res'
+case_createView :: Assertion
+case_createView = bracket_
+    (setupDB db)
+    (tearDB db) $ runCouch (conn db) $ do
+        rev <- couchViewPut "mydesign" "myview" "javascript"
+            "function(doc){emit(null, doc);}" Nothing
+        rev' <- CCG.couchRev "_design/mydesign"
+        liftIO $ rev @=? rev' 
+  where 
+    db = "cdbc_test_view_create"
 
-case_basicView :: Assertion
-case_basicView = runCouch conn $  do
-    _ <- couchView' "test" "group1" [("reduce", Just "false")] $ 
-        (CL.mapM (liftIO . print)) =$ CL.consume
-    _ <- couchView' "test" "group1" [("reduce", Just "false")] $ 
-        rowValue =$ CL.mapM_ (liftIO . print)
-    res' <- couchView' "test" "group1" [("reduce", Just "false")] $ 
-        rowValue =$ CL.consume
-    liftIO $ print res'
+case_bigValues :: Assertion
+case_bigValues = bracket_
+    (runCouch (conn db) $ do
+        couchPutDB ""
+        _ <- couchViewPut "mydesign" "myview" "javascript" 
+                "function(doc){emit(doc.intV, doc);}" Nothing
+        mapM_ (\n -> CCG.couchPut' (docName n) [] $ doc n) [1..20]
+    )
+    (tearDB db) $ runCouch (conn db) $ do
+        res <- couchView' "mydesign" "myview" [] $ 
+            (rowValue =$= CCG.toType) =$ CL.consume 
+        mapM_ (\(a, b) -> liftIO $ a @=? doc b) $ zip res [1..20]
+  where 
+    db = "cdbc_test_view_big_values"
+    doc n = T "doc" n $ concat $ replicate 10000 (show n)
 
-case_basicViewReduce :: Assertion
-case_basicViewReduce = runCouch conn $ do
-    res <- couchView' "test" "group1" [] $ 
-        CL.mapM (liftIO . print) =$ CL.consume
-    liftIO $ print res
+data ReducedView = ReducedView Int deriving (Show, Eq, Data, Typeable)
+
+case_withReduce :: Assertion    
+case_withReduce = bracket_
+    (runCouch (conn db) $ do
+        couchPutDB ""
+        _ <- couchViewPut "mydesign" "myview" "javascript" 
+                "function(doc){emit(doc.intV, doc.intV);}" 
+                $ Just "function(keys, values){return sum(values);}"
+        mapM_ (\n -> CCG.couchPut' (docName n) [] $ doc n) [1..20])
+    (tearDB db) $ runCouch (conn db) $ do
+        res <- couchView' "mydesign" "myview" [] $
+            (rowValue =$= CCG.toType) =$ CL.consume
+        liftIO $ res @=? [ReducedView 210]
+  where
+    db = "cdbc_test_view_reduce"
+    doc n = T "doc" n $ show n
     
-conn :: CouchConnection
-conn = def {couchDB = "cdbc_test"} 
+docName :: Int -> B.ByteString
+docName n = fromString $ "doc" ++ show n    
+
+-- | connection
+conn :: Path -> CouchConnection
+conn db = def {couchDB = db}
