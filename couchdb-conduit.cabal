@@ -87,7 +87,7 @@ test-suite test
                    data-default,
                    blaze-builder,
                    mtl
-  ghc-options:     -Wall -rtsopts -threaded
+  ghc-options:     -Wall -rtsopts -threaded -O2
   hs-source-dirs:  test
   main-is:         Main.hs
   other-modules:   

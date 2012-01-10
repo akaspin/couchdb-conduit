@@ -1,6 +1,42 @@
 {-# LANGUAGE OverloadedStrings, ScopedTypeVariables #-}
 
--- | Generic methods for CouchDB documents
+-- | Generic methods for CouchDB documents. Unlike explicit, generic methods 
+--   uses "Data.Generic".
+--
+-- > {-# LANGUAGE DeriveDataTypeable #-}
+-- > {-# LANGUAGE OverloadedStrings, ScopedTypeVariables #-}
+-- >
+-- > import Control.Monad.IO.Class (liftIO)
+-- > import Data.Generic (Data, Typeable)
+-- > import Database.CouchDB.Conduit
+-- > import Database.CouchDB.Conduit.Generic
+-- >
+-- > -- | Our doc with instances
+-- > data D = D { f1 :: Int, f2 :: String } deriving (Show, Data, Typeable)
+-- > 
+-- > runCouch def {couchDB="mydb"} $ do
+-- >    -- Put new doc and update it
+-- >    rev1 <- couchPut "my-doc1" "" [] $ D 123 "str"         
+-- >    rev2 <- couchPut "my-doc1" rev1 [] $ D 1234 "another"
+-- >
+-- >    -- get it and print
+-- >    (rev3, d1 :: D) <- couchGet "my-doc1" [] 
+-- >    liftIO $ print d1
+-- >
+-- >    -- update it in brute-force manner    
+-- >    couchPut' "my-doc1" [] $ D 12345 "third"    -- notice - no rev
+-- >    
+-- >    -- get revision and delete
+-- >    rev3 <- couchRev "my-doc1"
+-- >    couchDelete "my-doc1" rev3
+--  
+--   The main advantage of this approach in the absence of tonns of  
+--   boilerplate code. The main disadvantage is inability to influence the 
+--   process of translation to and from JSON.
+-- 
+--   For details of types see "Data.Aeson.Generic". To work with documents in 
+--   explicit manner, look at "Database.CouchDB.Conduit.Explicit".
+
 module Database.CouchDB.Conduit.Generic (
      -- * Accessing documents
     couchGet,
