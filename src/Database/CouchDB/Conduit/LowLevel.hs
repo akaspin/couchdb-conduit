@@ -19,7 +19,7 @@ import              Control.Monad.Base (liftBase)
 
 import              Data.Maybe (fromJust)
 import qualified    Data.ByteString as B
-import              Data.Aeson (json, Value(..))
+import qualified    Data.Aeson as A
 import qualified    Data.ByteString.UTF8 as BU8
 import qualified    Data.HashMap.Lazy as M
 import qualified    Data.Text as T
@@ -79,13 +79,13 @@ protect :: MonadCouch m =>
 protect goodCodes ~resp@(H.Response (HT.Status sc sm) _ bsrc)  
     | sc `elem` goodCodes = return resp
     | otherwise = do
-        v <- catch (bsrc $$ sinkParser json)
-                   (\(_::SomeException) -> return Null)
+        v <- catch (bsrc $$ sinkParser A.json)
+                   (\(_::SomeException) -> return A.Null)
         liftBase $ resourceThrow $ CouchError (Just sc) $ msg v
         where 
         msg v = BU8.toString sm ++ reason v
-        reason (Object v) = case M.lookup "reason" v of
-                Just (String t) -> ": " ++ T.unpack t
+        reason (A.Object v) = case M.lookup "reason" v of
+                Just (A.String t) -> ": " ++ T.unpack t
                 _                 -> ""
         reason _ = []
 

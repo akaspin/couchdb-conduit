@@ -4,11 +4,12 @@
 module Database.CouchDB.Conduit.Internal.Doc (
     couchRev,
     couchDelete,
-    couchGetRaw,
     
     couchGetWith,
     couchPutWith,
-    couchPutWith'
+    couchPutWith',
+    
+    couchGetRaw
 ) where
 
 import              Prelude hiding (catch)
@@ -25,7 +26,8 @@ import qualified    Network.HTTP.Conduit as H
 import              Network.HTTP.Types as HT
 
 import              Database.CouchDB.Conduit
-import              Database.CouchDB.Conduit.LowLevel (couch, protect')
+import              Database.CouchDB.Conduit.LowLevel 
+                        (couch, protect')
 import              Database.CouchDB.Conduit.Internal.Parser
 
 ------------------------------------------------------------------------------
@@ -54,20 +56,6 @@ couchDelete p r = couch HT.methodDelete p
                (H.RequestBodyBS B.empty)
                protect' >> return ()
                
-------------------------------------------------------------------------------
--- low-level 
-------------------------------------------------------------------------------
-
--- | Load raw 'A.Value' from single object from couch DB.
-couchGetRaw :: MonadCouch m => 
-       Path         -- ^ Document path
-    -> HT.Query     -- ^ Query
-    -> ResourceT m A.Value
-couchGetRaw p q = do
-    H.Response _ _ bsrc <- couch HT.methodGet p [] q 
-            (H.RequestBodyBS B.empty) protect'
-    bsrc $$ CA.sinkParser A.json
-    
 ------------------------------------------------------------------------------
 -- with converter
 ------------------------------------------------------------------------------
@@ -118,3 +106,15 @@ couchPutWith' f p q val = do
     handler404 (CouchError (Just 404) _) = return ""
     handler404 e = lift $ resourceThrow e
 
+
+-- | Load raw 'A.Value' from single object from couch DB.
+couchGetRaw :: MonadCouch m => 
+       Path         -- ^ Document path
+    -> HT.Query     -- ^ Query
+    -> ResourceT m (Revision, A.Value)
+couchGetRaw p q = do
+    H.Response _ _ bsrc <- couch HT.methodGet p [] q 
+            (H.RequestBodyBS B.empty) protect'
+    j <- bsrc $$ CA.sinkParser A.json
+    A.String r <- lift $ either resourceThrow return $ extractField "_rev" j
+    return (TE.encodeUtf8 r, j)

@@ -1,12 +1,12 @@
 name:           couchdb-conduit
-version:        0.1.0.2
+version:        0.1.1.0
 cabal-version:  >= 1.8
 build-type:     Simple
 stability:      Experimental
 category:       Database, Conduit
 license:        BSD3
 license-file:   LICENSE
-author:         John Lenz <lenz@math.uic.edu>, Alexander Dorofeev <aka.spin@gmail.com>
+author:         Alexander Dorofeev <aka.spin@gmail.com>, John Lenz <lenz@math.uic.edu>
 maintainer:     Alexander Dorofeev <aka.spin@gmail.com>
 synopsis:       Couch DB client library using http-conduit and aeson
 homepage:       https://github.com/akaspin/couchdb-conduit
@@ -49,6 +49,7 @@ library
   exposed-modules:  
                     Database.CouchDB.Conduit,
                     Database.CouchDB.Conduit.DB,
+                    Database.CouchDB.Conduit.Design,
                     Database.CouchDB.Conduit.Explicit,
                     Database.CouchDB.Conduit.Generic,
                     Database.CouchDB.Conduit.LowLevel,
