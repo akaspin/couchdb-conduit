@@ -3,7 +3,9 @@
 -- | High-level API for CouchDB design documents. These methods are very 
 --   convenient for bootstrapping and testing.
 
-module Database.CouchDB.Conduit.Design where
+module Database.CouchDB.Conduit.Design (
+    couchViewPut
+) where
 
 import              Prelude hiding (catch)
 import              Control.Exception.Lifted (catch)
@@ -19,7 +21,6 @@ import qualified    Data.Aeson.Types as AT
 
 import Database.CouchDB.Conduit (MonadCouch, CouchError, Path, mkPath, Revision)
 import Database.CouchDB.Conduit.Internal.Doc (couchGetWith, couchPutWith)
-
 
 -- | Put view in design document. If design document does not exist, it 
 --   will be created. 
