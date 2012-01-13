@@ -33,7 +33,7 @@ couchViewPut :: MonadCouch m =>
 couchViewPut designName viewName mapF reduceF = do
     -- Get design or empty object
     (rev, A.Object d) <- catch 
-        (couchGetWith (A.Success) path [])
+        (couchGetWith A.Success path [])
         (\(_ :: CouchError) -> return (B.empty, AT.emptyObject))
     couchPutWith A.encode path rev [] $ inferViews (purge_ d)
   where
@@ -49,7 +49,7 @@ couchViewPut designName viewName mapF reduceF = do
 
 -- | Purge underscore fields
 purge_ :: AT.Object -> AT.Object
-purge_ = M.filterWithKey (\k _ -> not $ k `elem` ["_id", "_rev"])
+purge_ = M.filterWithKey (\k _ -> k `notElem` ["_id", "_rev"])
 
 -- | Strip 'A.Value'
 stripObject :: AT.Value -> AT.Object
