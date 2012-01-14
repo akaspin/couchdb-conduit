@@ -18,7 +18,6 @@ import Data.Generics (Data, Typeable)
 import Data.ByteString.UTF8 (fromString)
 import Database.CouchDB.Conduit
 import Database.CouchDB.Conduit.Generic
-import Control.Monad.Trans.Class (lift)
 
 tests :: Test
 tests = mutuallyExclusive $ testGroup "Generic" [
