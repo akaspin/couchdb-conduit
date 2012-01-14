@@ -4,7 +4,8 @@
 --   convenient for bootstrapping and testing.
 
 module Database.CouchDB.Conduit.Design (
-    couchViewPut
+    couchViewPut,
+    couchViewPut'
 ) where
 
 import              Prelude hiding (catch)
@@ -22,52 +23,46 @@ import qualified    Data.Aeson.Types as AT
 import Database.CouchDB.Conduit (MonadCouch, CouchError, Path, mkPath, Revision)
 import Database.CouchDB.Conduit.Internal.Doc (couchGetWith, couchPutWith)
 
+-- | Put view in design document if it not exists. If design document does 
+--   not exist, it will be created. 
+couchViewPut' :: MonadCouch m =>
+       Path                 -- ^ Design document
+    -> Path                 -- ^ View name
+    -> B.ByteString         -- ^ Map function
+    -> Maybe B.ByteString   -- ^ Reduce function
+    -> ResourceT m Revision
+couchViewPut' = couchViewPutInt True
 
-
--- | Put view in design document. If design document does not exist, it 
---   will be created. 
+-- | Brute-force version of 'couchViewPut''. Put view in design document. 
+--   If design document does not exist, it will be created. 
 couchViewPut :: MonadCouch m =>
        Path                 -- ^ Design document
     -> Path                 -- ^ View name
     -> B.ByteString         -- ^ Map function
     -> Maybe B.ByteString   -- ^ Reduce function
     -> ResourceT m Revision
-couchViewPut designName viewName mapF reduceF = do
-    -- Get design or empty object
-    (rev, A.Object d) <- catch 
-        (couchGetWith A.Success path [])
-        (\(_ :: CouchError) -> return (B.empty, AT.emptyObject))
-    couchPutWith A.encode path rev [] $ inferViews (purge_ d)
-  where
-    path = (mkPath ["_design", designName])
-    inferViews d = A.Object $ M.insert "views" (addView d) d
-    addView d = A.Object $ M.insert 
-        (TE.decodeUtf8 viewName)
-        (constructView mapF reduceF) 
-        (extractViews d)
-    constructView :: B.ByteString -> Maybe B.ByteString -> A.Value
-    constructView m (Just r) = A.object ["map" A..= m, "reduce" A..= r]
-    constructView m Nothing = A.object ["map" A..= m]
+couchViewPut = couchViewPutInt False
 
 -----------------------------------------------------------------------------
 -- Internal
 -----------------------------------------------------------------------------
 
 couchViewPutInt :: MonadCouch m =>
-       Path                 -- ^ Design document
+       Bool
+    -> Path                 -- ^ Design document
     -> Path                 -- ^ View name
     -> B.ByteString         -- ^ Map function
     -> Maybe B.ByteString   -- ^ Reduce function
-    
     -> ResourceT m Revision
-couchViewPutInt designName viewName mapF reduceF = do
+couchViewPutInt prot designName viewName mapF reduceF = do
     -- Get design or empty object
-    (rev, A.Object d) <- catch 
-        (couchGetWith A.Success path [])
-        (\(_ :: CouchError) -> return (B.empty, AT.emptyObject))
-    couchPutWith A.encode path rev [] $ inferViews (purge_ d)
+    (rev, A.Object d) <- getDesignDoc path
+    let extractedView = extractViews d
+    if extractedView /= M.empty && prot 
+        then return rev
+        else couchPutWith A.encode path rev [] $ inferViews (purge_ d)
   where
-    path = (mkPath ["_design", designName])
+    path = designDocPath designName
     inferViews d = A.Object $ M.insert "views" (addView d) d
     addView d = A.Object $ M.insert 
         (TE.decodeUtf8 viewName)
@@ -76,7 +71,14 @@ couchViewPutInt designName viewName mapF reduceF = do
     constructView :: B.ByteString -> Maybe B.ByteString -> A.Value
     constructView m (Just r) = A.object ["map" A..= m, "reduce" A..= r]
     constructView m Nothing = A.object ["map" A..= m]
+
+getDesignDoc :: MonadCouch m => Path -> ResourceT m (Revision, AT.Value)
+getDesignDoc designName = catch 
+        (couchGetWith A.Success (designDocPath designName) [])
+        (\(_ :: CouchError) -> return (B.empty, AT.emptyObject))
     
+designDocPath :: Path -> Path
+designDocPath dn = mkPath ["_design", dn]
 
 -- | Purge underscore fields
 purge_ :: AT.Object -> AT.Object
