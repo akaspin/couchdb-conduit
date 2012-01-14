@@ -47,8 +47,7 @@ case_massFlow = bracket_
                 couchPut (docn n) "" [] $ TestDoc "doc" n $ show n
             ) [1..100]
         liftIO $ length revs @=? 100
-        revs' <- mapM (\n ->
-            couchRev $ docn n) [1..100]
+        revs' <- mapM (couchRev docn) [1..100]
         liftIO $ revs @=? revs'
         liftIO $ length revs' @=? 100
         mapM_ (\(n,r) ->
