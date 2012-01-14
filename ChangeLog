@@ -1,4 +1,4 @@
- In work, Version 0.1.2.0     * More work with design documents (in work)	 11.01.2011, Version 0.1.1.0 
+ In work, Version 0.1.2.0     * Authentification	 11.01.2011, Version 0.1.1.0 
 	* API Changes. `couchViewPut` moved to Database.CouchDB.Design and lost
 	language argument.	
 	* Tests.  10.01.2011, Version 0.1.0.1 

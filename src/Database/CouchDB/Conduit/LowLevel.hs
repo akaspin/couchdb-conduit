@@ -1,5 +1,5 @@
 {-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE ScopedTypeVariables, DoAndIfThenElse #-}
 
 -- | Low-level method and tools of accessing CouchDB.
 
@@ -61,9 +61,13 @@ couch meth path hdrs qs reqBody protectFn = do
             , H.queryString     = HT.renderQuery False qs
             , H.requestBody     = reqBody
             , H.checkStatus = const . const $ Nothing }
-    -- FIXME fromMaybe
-    res <- H.http req (fromJust $ couchManager conn)
-    protectFn res 
+    -- Apply auth if needed
+    let req' = if couchLogin conn == B.empty then req else H.applyBasicAuth 
+            (couchLogin conn) (couchPass conn) req
+    -- FIXME fromJust
+    res <- H.http req' (fromJust $ couchManager conn)
+    protectFn res
+    
 
 -- | Protect 'H.Response' from bad status codes. If status code in list 
 --   of status codes - just return response. Otherwise - throw 'CouchError'.

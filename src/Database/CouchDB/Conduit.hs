@@ -34,6 +34,8 @@ module Database.CouchDB.Conduit (
     couchPort,
     couchManager,
     couchDB,
+    couchLogin,
+    couchPass,
     
     -- * Runtime enviroment and errors #runtime#
     -- $runtime
@@ -115,10 +117,14 @@ data CouchConnection = CouchConnection {
         --   different databases through a single connection. But, in this 
         --   case, all requests must be preceded by the database name with 
         --   unescaped slash. See 'Path' for details.
+    , couchLogin :: B.ByteString
+        -- ^ CouchDB login. By default is 'B.empty'.
+    , couchPass :: B.ByteString
+        -- ^ CouchDB password. By default is 'B.empty'.
 }
 
 instance Default CouchConnection where
-    def = CouchConnection "localhost" 5984 Nothing B.empty
+    def = CouchConnection "localhost" 5984 Nothing B.empty B.empty B.empty
 
 -----------------------------------------------------------------------------
 -- Runtime
@@ -168,7 +174,7 @@ withCouchConnection :: ResourceIO m =>
        CouchConnection              -- ^ Couch connection
     -> (CouchConnection -> m a)     -- ^ Function to run
     -> m a
-withCouchConnection c@(CouchConnection _ _ mayMan _) f = 
+withCouchConnection c@(CouchConnection _ _ mayMan _ _ _) f = 
     case mayMan of
         -- Allocate manager with helper
         Nothing -> H.withManager $ \m -> lift $ f $ c {couchManager = Just m}
