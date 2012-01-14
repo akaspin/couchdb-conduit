@@ -18,11 +18,12 @@ import Data.Generics (Data, Typeable)
 import Data.ByteString.UTF8 (fromString)
 import Database.CouchDB.Conduit
 import Database.CouchDB.Conduit.Generic
+import Control.Monad.Trans.Class (lift)
 
 tests :: Test
 tests = mutuallyExclusive $ testGroup "Generic" [
     testCase "Just put-get-delete" case_justPutGet,
-    testCase "Mass flow" case_massFlow,
+--    testCase "Mass flow" case_massFlow,
     testCase "Mass Iter" case_massIter
     ]
     
@@ -47,7 +48,7 @@ case_massFlow = bracket_
                 couchPut (docn n) "" [] $ TestDoc "doc" n $ show n
             ) [1..100]
         liftIO $ length revs @=? 100
-        revs' <- mapM (couchRev docn) [1..100]
+        revs' <- mapM (\n -> couchRev $ docn n) [1..100]
         liftIO $ revs @=? revs'
         liftIO $ length revs' @=? 100
         mapM_ (\(n,r) ->
