@@ -77,11 +77,12 @@ couch meth path hdrs qs reqBody protectFn = do
 --   
 --   To protect from typical errors use 'protect''.
 protect :: MonadCouch m => 
-       [Int]                                        -- ^ Good codes
+       [Int]             -- ^ Good codes
+    -> (CouchResponse m -> ResourceT m (CouchResponse m)) -- ^ handler
     -> CouchResponse m   -- ^ Response
     -> ResourceT m (CouchResponse m)
-protect goodCodes ~resp@(H.Response (HT.Status sc sm) _ bsrc)  
-    | sc `elem` goodCodes = return resp
+protect goodCodes h ~resp@(H.Response (HT.Status sc sm) _ bsrc)  
+    | sc `elem` goodCodes = h resp
     | otherwise = do
         v <- catch (bsrc $$ sinkParser A.json)
                    (\(_::SomeException) -> return A.Null)
@@ -93,9 +94,12 @@ protect goodCodes ~resp@(H.Response (HT.Status sc sm) _ bsrc)
                 _                 -> ""
         reason _ = []
 
--- | Protect from typical status codes: 200, 201, 202 and 304. See 'protect'
---   fo details.       
+-- | Protect from typical status codes. It's equivalent of
+--
+--   > protect [200, 201, 202, 304] return
+--
+--   See 'protect' for details.       
 protect' :: MonadCouch m => 
        CouchResponse m   -- ^ Response
     -> ResourceT m (CouchResponse m)
-protect' = protect [200, 201, 202, 304]
+protect' = protect [200, 201, 202, 304] return
