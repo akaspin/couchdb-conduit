@@ -8,7 +8,7 @@ import Database.CouchDB.Conduit
 import Database.CouchDB.Conduit.DB
 
 setupDB :: ByteString -> IO ()
-setupDB n = runCouch def {couchDB = n} $ couchPutDB ""
+setupDB n = runCouch def {couchDB = n} $ couchPutDB_ ""
 
 tearDB :: ByteString -> IO ()
 tearDB n = runCouch  def {couchDB = n} $ couchDeleteDB ""

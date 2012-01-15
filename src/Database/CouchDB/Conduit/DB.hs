@@ -12,7 +12,7 @@
 module Database.CouchDB.Conduit.DB (
     -- * Methods
     couchPutDB,
-    couchPutDB',
+    couchPutDB_,
     couchDeleteDB
 ) where
 
@@ -38,12 +38,12 @@ couchPutDB p = couch HT.methodPut p [] []
                     (H.RequestBodyBS B.empty) protect'
                     >> return ()
 
--- | Brute force version of couchPutDb. Create CouchDB database regardless 
---   of presence. Catches 'CouchError' @412@.
-couchPutDB' :: MonadCouch m =>
+-- | \"Don't care\" version of couchPutDb. Create CouchDB database only in its 
+--   absence. Catches 'CouchError' @412@.
+couchPutDB_ :: MonadCouch m =>
        Path     -- ^ CouchDB Database name. See note above. 
     -> ResourceT m ()
-couchPutDB' p = 
+couchPutDB_ p = 
     catch (couchPutDB p) handler
   where
     handler (CouchError (Just 412) _) = return ()
