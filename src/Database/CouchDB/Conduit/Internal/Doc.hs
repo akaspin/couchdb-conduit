@@ -8,9 +8,7 @@ module Database.CouchDB.Conduit.Internal.Doc (
     couchGetWith,
     couchPutWith,
     couchPutWith_,
-    couchPutWith',
-    
-    couchGetRaw
+    couchPutWith'
 ) where
 
 import              Prelude hiding (catch)
@@ -40,9 +38,7 @@ couchRev :: MonadCouch m =>
        Path 
     -> ResourceT m Revision
 couchRev p = do
-    (H.Response _ hs _) <- couch HT.methodHead p [] [] 
-            (H.RequestBodyBS B.empty)
-            protect'
+    (H.Response _ hs _) <- couch HT.methodHead p [] [] emptyReqBody protect'
     return $ peekRev hs        
   where
     peekRev = B.tail . B.init . fromJust . lookup "Etag"
@@ -68,8 +64,7 @@ couchGetWith :: MonadCouch m =>
        -> Query                         -- ^ Query
        -> ResourceT m (Revision, a)
 couchGetWith f p q = do
-    H.Response _ _ bsrc <- couch HT.methodGet p [] q 
-            (H.RequestBodyBS B.empty) protect'
+    H.Response _ _ bsrc <- couch HT.methodGet p [] q emptyReqBody protect'
     j <- bsrc $$ CA.sinkParser A.json
     A.String r <- lift $ either resourceThrow return $ extractField "_rev" j
     o <- lift $ jsonToTypeWith f j 
@@ -105,9 +100,6 @@ couchPutWith_ f p q val = do
     rev <- catch (couchRev p) handler404
     if rev == "" then couchPutWith f p "" q val
         else return ""
-  where 
-    handler404 (CouchError (Just 404) _) = return ""
-    handler404 e = lift $ resourceThrow e
 
 -- | Brute force version of 'couchPutWith'.
 couchPutWith' :: MonadCouch m => 
@@ -119,19 +111,30 @@ couchPutWith' :: MonadCouch m =>
 couchPutWith' f p q val = do
     rev <- catch (couchRev p) handler404
     couchPutWith f p rev q val
-  where 
-    handler404 (CouchError (Just 404) _) = return ""
-    handler404 e = lift $ resourceThrow e
+
+------------------------------------------------------------------------------
+-- Internal
+------------------------------------------------------------------------------
+
+-- | Handle 404
+handler404 :: MonadCouch m => CouchError -> ResourceT m B.ByteString
+handler404 (CouchError (Just 404) _) = return B.empty
+handler404 e = lift $ resourceThrow e
+
+emptyReqBody :: H.RequestBody m
+emptyReqBody = H.RequestBodyBS B.empty
 
 
--- | Load raw 'A.Value' from single object from couch DB.
-couchGetRaw :: MonadCouch m => 
-       Path         -- ^ Document path
-    -> HT.Query     -- ^ Query
-    -> ResourceT m (Revision, A.Value)
-couchGetRaw p q = do
-    H.Response _ _ bsrc <- couch HT.methodGet p [] q 
-            (H.RequestBodyBS B.empty) protect'
-    j <- bsrc $$ CA.sinkParser A.json
-    A.String r <- lift $ either resourceThrow return $ extractField "_rev" j
-    return (TE.encodeUtf8 r, j)
+
+
+
+
+
+
+
+
+
+
+
+
+
