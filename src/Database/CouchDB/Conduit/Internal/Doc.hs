@@ -7,6 +7,7 @@ module Database.CouchDB.Conduit.Internal.Doc (
     
     couchGetWith,
     couchPutWith,
+    couchPutWith_,
     couchPutWith',
     
     couchGetRaw
@@ -92,6 +93,22 @@ couchPutWith f p r q val = do
     ifMatch "" = []
     ifMatch rv = [("If-Match", rv)]
     
+-- | \"Don't care\"  version of version of 'couchPutWith'. Stores 
+--   document only if it not exists.
+couchPutWith_ :: MonadCouch m => 
+        (a -> BL.ByteString)  -- ^ Encoder
+     -> Path        -- ^ Document path.
+     -> HT.Query    -- ^ Query arguments.
+     -> a           -- ^ The object to store.
+     -> ResourceT m Revision      
+couchPutWith_ f p q val = do
+    rev <- catch (couchRev p) handler404
+    if rev == "" then couchPutWith f p "" q val
+        else return ""
+  where 
+    handler404 (CouchError (Just 404) _) = return ""
+    handler404 e = lift $ resourceThrow e
+
 -- | Brute force version of 'couchPutWith'.
 couchPutWith' :: MonadCouch m => 
         (a -> BL.ByteString)  -- ^ Encoder

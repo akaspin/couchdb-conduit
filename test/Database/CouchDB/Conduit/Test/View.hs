@@ -53,7 +53,7 @@ case_createView :: Assertion
 case_createView = bracket_
     (setupDB db)
     (tearDB db) $ runCouch (conn db) $ do
-        rev <- couchViewPut "mydesign" "myview"
+        rev <- couchViewPut' "mydesign" "myview"
             "function(doc){emit(null, doc);}" Nothing
         rev' <- CCG.couchRev "_design/mydesign"
         liftIO $ rev @=? rev' 
@@ -64,7 +64,7 @@ case_bigValues :: Assertion
 case_bigValues = bracket_
     (runCouch (conn db) $ do
         couchPutDB ""
-        _ <- couchViewPut "mydesign" "myview"
+        _ <- couchViewPut' "mydesign" "myview"
                 "function(doc){emit(doc.intV, doc);}" Nothing
         mapM_ (\n -> CCG.couchPut' (docName n) [] $ doc n) [1..20]
     )
@@ -82,7 +82,7 @@ case_withReduce :: Assertion
 case_withReduce = bracket_
     (runCouch (conn db) $ do
         couchPutDB ""
-        _ <- couchViewPut "mydesign" "myview"
+        _ <- couchViewPut' "mydesign" "myview"
                 "function(doc){emit(doc.intV, doc.intV);}" 
                 $ Just "function(keys, values){return sum(values);}"
         mapM_ (\n -> CCG.couchPut' (docName n) [] $ doc n) [1..20])

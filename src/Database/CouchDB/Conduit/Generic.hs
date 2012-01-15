@@ -43,6 +43,7 @@ module Database.CouchDB.Conduit.Generic (
     couchRev,
     -- * Manipulating documents
     couchPut,
+    couchPut_,
     couchPut',
     couchDelete,
     -- * Working with views #view#
@@ -76,7 +77,17 @@ couchPut :: (MonadCouch m, Data a) =>
      -> ResourceT m Revision      
 couchPut = couchPutWith AG.encode
     
--- | Brute force version of 'couchPut'.
+-- | \"Don't care\" version of 'couchPut'. Creates document only in its 
+--   absence.
+couchPut_ :: (MonadCouch m, Data a) => 
+        Path        -- ^ Document path.
+     -> HT.Query    -- ^ Query arguments.
+     -> a           -- ^ The object to store.
+     -> ResourceT m Revision      
+couchPut_ = couchPutWith_ AG.encode
+
+-- | Brute force version of 'couchPut'. Creates a document regardless of 
+--   presence. 
 couchPut' :: (MonadCouch m, Data a) => 
         Path        -- ^ Document path.
      -> HT.Query    -- ^ Query arguments.

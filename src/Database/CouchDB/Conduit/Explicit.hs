@@ -46,6 +46,7 @@ module Database.CouchDB.Conduit.Explicit (
     couchRev,
     -- * Manipulating documents
     couchPut,
+    couchPut_,
     couchPut',
     couchDelete,
     -- * Working with views #view#
@@ -59,7 +60,8 @@ import              Network.HTTP.Types as HT
 
 import              Database.CouchDB.Conduit (MonadCouch(..), Path, Revision)
 import              Database.CouchDB.Conduit.Internal.Doc (couchRev,
-                        couchDelete, couchGetWith, couchPutWith, couchPutWith')
+                        couchDelete, couchGetWith, couchPutWith, couchPutWith',
+                        couchPutWith_)
 import              Database.CouchDB.Conduit.Internal.View (toTypeWith)
 
 ------------------------------------------------------------------------------
@@ -83,7 +85,17 @@ couchPut :: (MonadCouch m, A.ToJSON a) =>
      -> ResourceT m Revision      
 couchPut = couchPutWith A.encode
 
--- | Brute force version of 'couchPut'.
+-- | \"Don't care\" version of 'couchPut'. Creates document only in its 
+--   absence.
+couchPut_ :: (MonadCouch m, A.ToJSON a) => 
+        Path        -- ^ Document path.
+     -> HT.Query    -- ^ Query arguments.
+     -> a           -- ^ The object to store.
+     -> ResourceT m Revision      
+couchPut_ = couchPutWith_ A.encode
+
+-- | Brute force version of 'couchPut'. Creates a document regardless of 
+--   presence. 
 couchPut' :: (MonadCouch m, A.ToJSON a) => 
         Path        -- ^ Document path.
      -> HT.Query    -- ^ Query arguments.
