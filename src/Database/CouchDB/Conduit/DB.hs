@@ -16,19 +16,15 @@ module Database.CouchDB.Conduit.DB (
     couchDeleteDB
 ) where
 
-import Prelude hiding (catch)
-import Control.Exception.Lifted (catch)
-
 import qualified Data.ByteString as B
 
-import Data.Conduit (ResourceT, resourceThrow)
+import Data.Conduit (ResourceT)
 
 import qualified Network.HTTP.Conduit as H
 import qualified Network.HTTP.Types as HT
 
-import Database.CouchDB.Conduit (MonadCouch(..), CouchError(..), Path)
-import Database.CouchDB.Conduit.LowLevel (couch, protect')
-import Control.Monad.Trans.Class (lift)
+import Database.CouchDB.Conduit (MonadCouch(..), Path)
+import Database.CouchDB.Conduit.LowLevel (couch, protect, protect')
 
 -- | Create CouchDB database.
 couchPutDB :: MonadCouch m =>
@@ -44,10 +40,14 @@ couchPutDB_ :: MonadCouch m =>
        Path     -- ^ CouchDB Database name. See note above. 
     -> ResourceT m ()
 couchPutDB_ p = 
-    catch (couchPutDB p) handler
-  where
-    handler (CouchError (Just 412) _) = return ()
-    handler e = lift $ resourceThrow e
+    couch HT.methodPut p [] []
+                    (H.RequestBodyBS B.empty) 
+                    (protect [200, 201, 202, 304] return) 
+                    >> return ()
+--    catch (couchPutDB p) handler
+--  where
+--    handler (CouchError (Just 412) _) = return ()
+--    handler e = lift $ resourceThrow e
 
 -- | Delete a database.
 couchDeleteDB :: MonadCouch m => 
