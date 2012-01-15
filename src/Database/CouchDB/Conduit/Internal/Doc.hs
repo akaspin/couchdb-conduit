@@ -98,8 +98,9 @@ couchPutWith_ :: MonadCouch m =>
      -> ResourceT m Revision      
 couchPutWith_ f p q val = do
     rev <- catch (couchRev p) handler404
-    if rev == "" then couchPutWith f p "" q val
-        else return ""
+    if rev == "" 
+        then couchPutWith f p "" q val
+        else return rev
 
 -- | Brute force version of 'couchPutWith'.
 couchPutWith' :: MonadCouch m => 
@@ -121,6 +122,7 @@ handler404 :: MonadCouch m => CouchError -> ResourceT m B.ByteString
 handler404 (CouchError (Just 404) _) = return B.empty
 handler404 e = lift $ resourceThrow e
 
+-- | Form empty request code
 emptyReqBody :: H.RequestBody m
 emptyReqBody = H.RequestBodyBS B.empty
 
