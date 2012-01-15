@@ -44,6 +44,7 @@ module Database.CouchDB.Conduit.Explicit (
     -- * Accessing documents
     couchGet,
     couchRev,
+    couchRev',
     -- * Manipulating documents
     couchPut,
     couchPut_,
@@ -59,9 +60,7 @@ import              Data.Conduit (ResourceT, Conduit(..), ResourceIO)
 import              Network.HTTP.Types as HT
 
 import              Database.CouchDB.Conduit (MonadCouch(..), Path, Revision)
-import              Database.CouchDB.Conduit.Internal.Doc (couchRev,
-                        couchDelete, couchGetWith, couchPutWith, couchPutWith',
-                        couchPutWith_)
+import              Database.CouchDB.Conduit.Internal.Doc 
 import              Database.CouchDB.Conduit.Internal.View (toTypeWith)
 
 ------------------------------------------------------------------------------

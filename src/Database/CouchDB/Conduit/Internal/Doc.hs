@@ -3,6 +3,7 @@
 -- | Internal
 module Database.CouchDB.Conduit.Internal.Doc (
     couchRev,
+    couchRev',
     couchDelete,
     
     couchGetWith,
@@ -35,13 +36,24 @@ import              Database.CouchDB.Conduit.Internal.Parser
 
 -- | Get Revision of a document. 
 couchRev :: MonadCouch m => 
-       Path 
+       Path                 -- ^ Path
     -> ResourceT m Revision
 couchRev p = do
     (H.Response _ hs _) <- couch HT.methodHead p [] [] emptyReqBody protect'
     return $ peekRev hs        
   where
     peekRev = B.tail . B.init . fromJust . lookup "Etag"
+
+-- | Brain-free version of 'couchRev'. If document absent, 
+--   just return 'B.empty'.
+couchRev' :: MonadCouch m =>
+       Path 
+    -> ResourceT m Revision
+couchRev' p = 
+    catch (couchRev p) handler404
+  where
+    handler404 (CouchError (Just 404) _) = return B.empty
+    handler404 e = lift $ resourceThrow e
 
 -- | Delete the given revision of the object.    
 couchDelete :: MonadCouch m => 
@@ -50,7 +62,7 @@ couchDelete :: MonadCouch m =>
     -> ResourceT m ()
 couchDelete p r = couch HT.methodDelete p 
                [] [("rev", Just r)]
-               (H.RequestBodyBS B.empty)
+               emptyReqBody
                protect' >> return ()
                
 ------------------------------------------------------------------------------
@@ -97,7 +109,7 @@ couchPutWith_ :: MonadCouch m =>
      -> a           -- ^ The object to store.
      -> ResourceT m Revision      
 couchPutWith_ f p q val = do
-    rev <- catch (couchRev p) handler404
+    rev <- couchRev' p
     if rev == "" 
         then couchPutWith f p "" q val
         else return rev
@@ -110,17 +122,12 @@ couchPutWith' :: MonadCouch m =>
      -> a           -- ^ The object to store.
      -> ResourceT m Revision      
 couchPutWith' f p q val = do
-    rev <- catch (couchRev p) handler404
+    rev <- couchRev' p
     couchPutWith f p rev q val
 
 ------------------------------------------------------------------------------
 -- Internal
 ------------------------------------------------------------------------------
-
--- | Handle 404
-handler404 :: MonadCouch m => CouchError -> ResourceT m B.ByteString
-handler404 (CouchError (Just 404) _) = return B.empty
-handler404 e = lift $ resourceThrow e
 
 -- | Form empty request code
 emptyReqBody :: H.RequestBody m

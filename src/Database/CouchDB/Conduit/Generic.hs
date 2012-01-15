@@ -41,6 +41,7 @@ module Database.CouchDB.Conduit.Generic (
      -- * Accessing documents
     couchGet,
     couchRev,
+    couchRev',
     -- * Manipulating documents
     couchPut,
     couchPut_,
