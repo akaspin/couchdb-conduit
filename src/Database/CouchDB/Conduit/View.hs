@@ -73,7 +73,7 @@ couchView designDocName viewName q = do
   where
     fullPath = B.concat ["_design/", designDocName, "/_view/", viewName]
 
--- | Brain-free version of 'runCouch'. Takes 'Sink' to consume response.
+-- | Brain-free version of 'couchView'. Takes 'Sink' to consume response.
 --
 -- > runCouch def {couchDB="mydb"} $ do
 -- >
