@@ -7,7 +7,7 @@ module Database.CouchDB.Conduit.Test.View where
 import Test.Framework (testGroup, mutuallyExclusive, Test)
 import Test.Framework.Providers.HUnit (testCase)
 import Test.HUnit (Assertion, (@=?))
-import Database.CouchDB.Conduit.Test.Util (setupDB, tearDB)
+import Database.CouchDB.Conduit.Test.Util (setupDB, tearDB, conn)
 
 --import Control.Monad.Trans.Class (lift)
 import Control.Exception.Lifted (bracket_)
@@ -96,7 +96,3 @@ case_withReduce = bracket_
     
 docName :: Int -> B.ByteString
 docName n = fromString $ "doc" ++ show n    
-
--- | connection
-conn :: Path -> CouchConnection
-conn db = def {couchDB = db}

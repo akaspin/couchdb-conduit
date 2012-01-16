@@ -2,6 +2,18 @@
 
 This is a CouchDB client library for the Haskell programming language.
 
+# Testing against secured CouchDB
+
+If your CouchDB not in Admin Party, you need to set credentials. Just set 
+needed login and password in function `Database.CouchDB.Conduit.Test.Util.conn`:
+
+    conn db = def {
+        couchDB = db, 
+        couchLogin = "root",    -- login
+        couchPass = "sumatra"}  -- pass
+
+or leave them `empty`
+
 # Join in!
 
 We are happy to receive bug reports, fixes, documentation enhancements, and other improvements.
