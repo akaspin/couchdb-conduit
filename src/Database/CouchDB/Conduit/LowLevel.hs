@@ -6,6 +6,7 @@
 module Database.CouchDB.Conduit.LowLevel (
     CouchResponse,
     couch,
+    couch',
     protect,
     protect'
 ) where
@@ -42,32 +43,46 @@ type CouchResponse m = H.Response (BufferedSource m B.ByteString)
 --   attachments that are not in JSON format.
 couch :: MonadCouch m =>
        HT.Method                -- ^ Method
-    -> Path                     -- ^ Path
+    -> (Path -> Path)           -- ^ Path creation function
     -> HT.RequestHeaders        -- ^ Headers
     -> HT.Query                 -- ^ Query args
     -> H.RequestBody m          -- ^ Request body
     -> (CouchResponse m -> ResourceT m (CouchResponse m))
                                 -- ^ Protect function. See 'protect'
     -> ResourceT m (CouchResponse m)
-couch meth path hdrs qs reqBody protectFn = do
+couch meth pathFn hdrs qs reqBody protectFn = do
     conn <- lift couchConnection
     let req = H.def 
             { H.method          = meth
             , H.host            = couchHost conn
             , H.requestHeaders  = hdrs
             , H.port            = couchPort conn
-            , H.path            = B.intercalate "/" . filter (/="") $ 
-                                        [couchDB conn, path]
+            , H.path            = pathFn $ couchDB conn
             , H.queryString     = HT.renderQuery False qs
             , H.requestBody     = reqBody
             , H.checkStatus = const . const $ Nothing }
     -- Apply auth if needed
     let req' = if couchLogin conn == B.empty then req else H.applyBasicAuth 
             (couchLogin conn) (couchPass conn) req
-    -- FIXME fromJust
     res <- H.http req' (fromJust $ couchManager conn)
     protectFn res
-    
+
+-- | Simplified version of 'couch'. This version uses standart path 
+--   creation and protect functions.
+couch' :: MonadCouch m =>
+       HT.Method                -- ^ Method
+    -> Path                     -- ^ Path
+    -> HT.RequestHeaders        -- ^ Headers
+    -> HT.Query                 -- ^ Query args
+    -> H.RequestBody m          -- ^ Request body
+    -> ResourceT m (CouchResponse m)
+couch' meth p hdrs qs reqBody = 
+        couch meth 
+        (\dbP -> mkPath [dbP, p])
+        hdrs
+        qs
+        reqBody
+        protect'   
 
 -- | Protect 'H.Response' from bad status codes. If status code in list 
 --   of status codes - just return response. Otherwise - throw 'CouchError'.

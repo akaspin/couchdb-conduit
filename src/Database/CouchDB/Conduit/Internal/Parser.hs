@@ -11,12 +11,6 @@ import qualified    Data.Aeson as A
 
 import              Database.CouchDB.Conduit
 
---valToRev :: A.Value -> Either CouchError Revision
---valToRev (A.Object o) = case M.lookup "rev" o of
---    (Just (A.String r)) -> Right $ TE.encodeUtf8 r
---    _  -> Left $ CouchError Nothing "unable to find revision"  
---valToRev _ = Left $ CouchError Nothing "Couch DB did not return an object"
-
 extractField :: T.Text -> A.Value -> Either CouchError A.Value
 extractField s (A.Object o) = 
     maybe (Left $ CouchError Nothing $ 
@@ -40,3 +34,4 @@ jsonToTypeWith f j = case f j of
         A.Error e -> resourceThrow $ CouchError Nothing 
                         ("Error parsing json: " ++ e)
         A.Success o -> return o
+

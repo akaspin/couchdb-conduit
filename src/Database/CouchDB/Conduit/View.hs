@@ -31,7 +31,7 @@ import qualified    Network.HTTP.Conduit as H
 import qualified    Network.HTTP.Types as HT
 
 import              Database.CouchDB.Conduit
-import              Database.CouchDB.Conduit.LowLevel (couch, protect')
+import              Database.CouchDB.Conduit.LowLevel (couch')
 
 -----------------------------------------------------------------------------
 -- Running
@@ -67,8 +67,8 @@ couchView :: MonadCouch m =>
     -> HT.Query             -- ^ Query parameters
     -> ResourceT m (Source m A.Object)
 couchView designDocName viewName q = do
-    H.Response _ _ bsrc <- couch HT.methodGet fullPath [] q 
-        (H.RequestBodyBS B.empty) protect'
+    H.Response _ _ bsrc <- couch' HT.methodGet fullPath [] q 
+        (H.RequestBodyBS B.empty)
     return $ bsrc $= conduitCouchView
   where
     fullPath = B.concat ["_design/", designDocName, "/_view/", viewName]
@@ -89,8 +89,8 @@ couchView' :: MonadCouch m =>
     -> Sink A.Object m a    -- ^ Sink for handle view rows.
     -> ResourceT m a
 couchView' designDocName viewName q sink = do
-    H.Response _ _ bsrc <- couch HT.methodGet fullPath [] q 
-        (H.RequestBodyBS B.empty) protect'
+    H.Response _ _ bsrc <- couch' HT.methodGet fullPath [] q 
+        (H.RequestBodyBS B.empty)
     bsrc $= conduitCouchView $$ sink
   where
     fullPath = mkPath ["_design", designDocName, "_view", viewName]

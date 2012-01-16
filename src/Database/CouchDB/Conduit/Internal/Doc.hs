@@ -26,8 +26,7 @@ import qualified    Network.HTTP.Conduit as H
 import              Network.HTTP.Types as HT
 
 import              Database.CouchDB.Conduit
-import              Database.CouchDB.Conduit.LowLevel 
-                        (couch, protect')
+import              Database.CouchDB.Conduit.LowLevel (couch')
 import              Database.CouchDB.Conduit.Internal.Parser
 
 ------------------------------------------------------------------------------
@@ -39,7 +38,8 @@ couchRev :: MonadCouch m =>
        Path                 -- ^ Path
     -> ResourceT m Revision
 couchRev p = do
-    (H.Response _ hs _) <- couch HT.methodHead p [] [] emptyReqBody protect'
+    (H.Response _ hs _) <- couch' HT.methodHead p [] [] 
+                                (H.RequestBodyBS B.empty)
     return $ peekRev hs        
   where
     peekRev = B.tail . B.init . fromJust . lookup "Etag"
@@ -60,23 +60,23 @@ couchDelete :: MonadCouch m =>
        Path 
     -> Revision
     -> ResourceT m ()
-couchDelete p r = couch HT.methodDelete p 
-               [] [("rev", Just r)]
-               emptyReqBody
-               protect' >> return ()
+couchDelete p r = couch' HT.methodDelete p [] [("rev", Just r)]
+               (H.RequestBodyBS B.empty) 
+               >> return ()
                
 ------------------------------------------------------------------------------
 -- with converter
 ------------------------------------------------------------------------------
 
--- | Load CouchDB document and parse it with given parser   
+-- | Load CouchDB document and parse it with given parser.  
 couchGetWith :: MonadCouch m =>
           (A.Value -> A.Result a)       -- ^ Parser
        -> Path                          -- ^ Path
        -> Query                         -- ^ Query
        -> ResourceT m (Revision, a)
 couchGetWith f p q = do
-    H.Response _ _ bsrc <- couch HT.methodGet p [] q emptyReqBody protect'
+    H.Response _ _ bsrc <- couch' HT.methodGet p [] q 
+                            (H.RequestBodyBS B.empty)
     j <- bsrc $$ CA.sinkParser A.json
     A.String r <- lift $ either resourceThrow return $ extractField "_rev" j
     o <- lift $ jsonToTypeWith f j 
@@ -92,8 +92,8 @@ couchPutWith :: MonadCouch m =>
        -> a                     -- ^ The object to store.
        -> ResourceT m Revision
 couchPutWith f p r q val = do
-    H.Response _ _ bsrc <- couch HT.methodPut p (ifMatch r) q 
-            (H.RequestBodyLBS $ f val) protect'
+    H.Response _ _ bsrc <- couch' HT.methodPut p (ifMatch r) q 
+            (H.RequestBodyLBS $ f val)
     j <- bsrc $$ CA.sinkParser A.json
     lift $ either resourceThrow return $ extractRev j
   where 
@@ -125,13 +125,6 @@ couchPutWith' f p q val = do
     rev <- couchRev' p
     couchPutWith f p rev q val
 
-------------------------------------------------------------------------------
--- Internal
-------------------------------------------------------------------------------
-
--- | Form empty request code
-emptyReqBody :: H.RequestBody m
-emptyReqBody = H.RequestBodyBS B.empty
 
 
 
