@@ -93,5 +93,6 @@ test-suite test
                    Database.CouchDB.Conduit.Test.Explicit,
                    Database.CouchDB.Conduit.Test.Util,
                    Database.CouchDB.Conduit.Test.View,
-                   Database.CouchDB.Conduit.Test.Generic
+                   Database.CouchDB.Conduit.Test.Generic,
+                   CouchDBAuth
 

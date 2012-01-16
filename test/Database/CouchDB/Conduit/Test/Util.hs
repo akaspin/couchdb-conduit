@@ -7,6 +7,8 @@ import Data.ByteString
 import Database.CouchDB.Conduit
 import Database.CouchDB.Conduit.DB
 
+import CouchDBAuth
+
 setupDB :: ByteString -> IO ()
 setupDB n = runCouch (conn n) $ couchPutDB_ n
 
@@ -17,5 +19,5 @@ tearDB n = runCouch (conn n) $ couchDeleteDB n
 conn :: Path -> CouchConnection
 conn db = def {
     couchDB = db, 
-    couchLogin = "root",
-    couchPass = "sumatra"}
+    couchLogin = login,
+    couchPass = pass}
