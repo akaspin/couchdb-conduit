@@ -94,7 +94,7 @@ couchSecureDB :: MonadCouch m =>
     -> [B.ByteString]   -- ^ Readers names
     -> ResourceT m ()       
 couchSecureDB p adminRoles adminNames readersRoles readersNames = 
-    couch HT.methodPut (`B.append` B.append "/" p) [] []
+    couch HT.methodPut (const $ p `B.append` "/_security") [] []
             reqBody protect' 
             >> return ()
   where

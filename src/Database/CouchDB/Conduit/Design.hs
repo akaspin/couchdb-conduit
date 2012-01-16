@@ -21,7 +21,8 @@ import qualified    Data.Aeson as A
 import qualified    Data.Aeson.Types as AT
 
 import Database.CouchDB.Conduit (MonadCouch, CouchError, Path, mkPath, Revision)
-import Database.CouchDB.Conduit.Internal.Doc (couchGetWith, couchPutWith)
+import Database.CouchDB.Conduit.Internal.Doc (couchGetWith, 
+            couchPutWith_, couchPutWith')
 
 -- | Put view in design document if it not exists. If design document does 
 --   not exist, it will be created. 
@@ -56,11 +57,9 @@ couchViewPutInt :: MonadCouch m =>
     -> ResourceT m Revision
 couchViewPutInt prot designName viewName mapF reduceF = do
     -- Get design or empty object
-    (rev, A.Object d) <- getDesignDoc path
-    let extractedView = extractViews d
-    if extractedView /= M.empty && prot 
-        then return rev
-        else couchPutWith A.encode path rev [] $ inferViews (purge_ d)
+    (_, A.Object d) <- getDesignDoc path
+    if prot then couchPutWith_ A.encode path [] $ inferViews (purge_ d)
+            else couchPutWith' A.encode path [] $ inferViews (purge_ d)
   where
     path = designDocPath designName
     inferViews d = A.Object $ M.insert "views" (addView d) d
