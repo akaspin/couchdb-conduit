@@ -17,7 +17,6 @@ description:
     attoparsec fit togther so well that this package is mostly just a direct combination
     of these packages.  The single additional feature in this package is an attoparsec parser
     for views, which allows constant memory processing of view returns.
-data-files:     test/Database/CouchDB/Conduit/Test/Explicit.hs, test/Database/CouchDB/Conduit/Test/Generic.hs, test/Database/CouchDB/Conduit/Test/Util.hs, test/Database/CouchDB/Conduit/Test/View.hs, test/Main.hs
 
 source-repository head
   type:         git
