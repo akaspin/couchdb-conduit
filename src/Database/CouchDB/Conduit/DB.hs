@@ -1,3 +1,4 @@
+{-# LANGUAGE DeriveDataTypeable #-} 
 {-# LANGUAGE OverloadedStrings #-} 
 
 {- | CouchDB database methods.
@@ -13,11 +14,18 @@ module Database.CouchDB.Conduit.DB (
     couchPutDB,
     couchPutDB_,
     couchDeleteDB,
-    couchReplicateDB
+    -- * Replication
+    couchReplicateDB,
+    -- * Security
+    couchSecureDB
 ) where
+
+--import Control.Applicative ((<$>), (<*>), empty)
 
 import qualified Data.ByteString as B
 import qualified Data.Aeson as A
+--import Data.Generics (Data, Typeable)
+--import Data.Default (Default (def))
 
 import Data.Conduit (ResourceT)
 
@@ -26,6 +34,7 @@ import qualified Network.HTTP.Types as HT
 
 import Database.CouchDB.Conduit (MonadCouch(..), Path)
 import Database.CouchDB.Conduit.LowLevel (couch, protect, protect')
+
 
 -- | Create CouchDB database. 
 couchPutDB :: MonadCouch m =>
@@ -75,5 +84,28 @@ couchReplicateDB source target createTarget continuous cancel =
             "target" A..= target,
             "create_target" A..= createTarget,
             "continuous" A..= continuous,
-            "cancel" A..= cancel
-        ]
+            "cancel" A..= cancel ]
+
+couchSecureDB :: MonadCouch m => 
+       Path             -- ^ Database
+    -> [B.ByteString]   -- ^ Admin roles 
+    -> [B.ByteString]   -- ^ Admin names
+    -> [B.ByteString]   -- ^ Readers roles 
+    -> [B.ByteString]   -- ^ Readers names
+    -> ResourceT m ()       
+couchSecureDB p adminRoles adminNames readersRoles readersNames = 
+    couch HT.methodPut (`B.append` B.append "/" p) [] []
+            reqBody protect' 
+            >> return ()
+  where
+    reqBody = H.RequestBodyLBS $ A.encode $ A.object [
+            "admins" A..= A.object [ "roles" A..= adminRoles,
+                                     "names" A..= adminNames ],
+            "readers" A..= A.object [ "roles" A..= readersRoles,
+                                     "names" A..= readersNames ] ]
+        
+        
+        
+        
+        
+        
