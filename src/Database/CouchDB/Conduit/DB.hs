@@ -1,17 +1,23 @@
+{-# LANGUAGE OverloadedStrings #-} 
+
 {- | CouchDB database methods.
 
 > runCouch def $ couchPutDb "my_new_db"
-> runCouch def {couchDB="another_new_db"} $ couchPutDb ""
+> runCouch def {couchDB="my_new_db"} $ couchPutDb "another_new_db"
+
+/Note./ All database methods ignores database settings in connection.
 -}
 
 module Database.CouchDB.Conduit.DB (
     -- * Methods
     couchPutDB,
     couchPutDB_,
-    couchDeleteDB
+    couchDeleteDB,
+    couchReplicateDB
 ) where
 
 import qualified Data.ByteString as B
+import qualified Data.Aeson as A
 
 import Data.Conduit (ResourceT)
 
@@ -19,7 +25,7 @@ import qualified Network.HTTP.Conduit as H
 import qualified Network.HTTP.Types as HT
 
 import Database.CouchDB.Conduit (MonadCouch(..), Path)
-import Database.CouchDB.Conduit.LowLevel
+import Database.CouchDB.Conduit.LowLevel (couch, protect, protect')
 
 -- | Create CouchDB database. 
 couchPutDB :: MonadCouch m =>
@@ -60,4 +66,14 @@ couchReplicateDB :: MonadCouch m =>
     -> Bool             -- ^ Cancel flag
     -> ResourceT m ()
 couchReplicateDB source target createTarget continuous cancel = 
-    undefined
+    couch HT.methodPost (const "_replicate") [] []
+            reqBody protect' 
+            >> return ()
+  where
+    reqBody = H.RequestBodyLBS $ A.encode $ A.object [
+            "source" A..= source,
+            "target" A..= target,
+            "create_target" A..= createTarget,
+            "continuous" A..= continuous,
+            "cancel" A..= cancel
+        ]

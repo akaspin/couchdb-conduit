@@ -63,7 +63,7 @@ case_createView = bracket_
 case_bigValues :: Assertion
 case_bigValues = bracket_
     (runCouch (conn db) $ do
-        couchPutDB ""
+        couchPutDB db
         _ <- couchViewPut' "mydesign" "myview"
                 "function(doc){emit(doc.intV, doc);}" Nothing
         mapM_ (\n -> CCG.couchPut' (docName n) [] $ doc n) [1..20]
@@ -81,7 +81,7 @@ data ReducedView = ReducedView Int deriving (Show, Eq, Data, Typeable)
 case_withReduce :: Assertion    
 case_withReduce = bracket_
     (runCouch (conn db) $ do
-        couchPutDB ""
+        couchPutDB db
         _ <- couchViewPut' "mydesign" "myview"
                 "function(doc){emit(doc.intV, doc.intV);}" 
                 $ Just "function(keys, values){return sum(values);}"
