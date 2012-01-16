@@ -78,7 +78,7 @@ couch' :: MonadCouch m =>
     -> ResourceT m (CouchResponse m)
 couch' meth p hdrs qs reqBody = 
         couch meth 
-        (\dbP -> mkPath [dbP, p])
+        (\dbP -> B.intercalate "/" . filter (/="") $ [dbP, p])
         hdrs
         qs
         reqBody
