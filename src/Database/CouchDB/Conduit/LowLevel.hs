@@ -25,7 +25,7 @@ import qualified    Data.ByteString.UTF8 as BU8
 import qualified    Data.HashMap.Lazy as M
 import qualified    Data.Text as T
 
-import              Data.Conduit (ResourceT, BufferedSource, 
+import              Data.Conduit (ResourceT, Source, 
                         ($$), resourceThrow)
 import              Data.Conduit.Attoparsec (sinkParser)
                         
@@ -35,7 +35,7 @@ import qualified    Network.HTTP.Types as HT
 import              Database.CouchDB.Conduit
 
 -- | CouchDB response
-type CouchResponse m = H.Response (BufferedSource m B.ByteString)
+type CouchResponse m = H.Response (Source m B.ByteString)
 
 -- | The most general method of accessing CouchDB.  This is a very thin wrapper 
 --   around 'H.http'.  Most of the time you should use one of the other access 

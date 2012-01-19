@@ -1,5 +1,5 @@
 name:           couchdb-conduit
-version:        0.2.1.2
+version:        0.3.0.0
 cabal-version:  >= 1.8
 build-type:     Simple
 stability:      Experimental
@@ -26,12 +26,12 @@ library
   hs-source-dirs:   src
   build-depends:   
                    base >= 4 && < 5,
-                   conduit >= 0.1,
+                   conduit == 0.1.*,
                    attoparsec >= 0.8 && < 0.11,
                    attoparsec-conduit >= 0.0 && < 0.1,
                    http-conduit == 1.2.*,
                    http-types >= 0.6 && < 0.7,
-                   monad-control == 0.3.*,
+                   monad-control >= 0.3 && < 0.4,
                    transformers == 0.2.*,
                    transformers-base == 0.4.*,
                    lifted-base >= 0.1 && < 0.2,
@@ -41,9 +41,9 @@ library
                    text >= 0.11 && < 0.12,
                    unordered-containers >= 0.1 && < 0.2,
                    syb,
-                   containers,
+                   containers >= 0.2,
                    data-default,
-                   blaze-builder
+                   blaze-builder >= 0.2.1 && < 0.4
   ghc-options:      -Wall
   exposed-modules:  
                     Database.CouchDB.Conduit,
@@ -69,14 +69,14 @@ test-suite test
                    test-framework-quickcheck2,
                    test-framework-hunit,
                    couchdb-conduit,
-                   conduit >= 0.0.0.2 && < 0.1,
+                   conduit == 0.1.*,
                    attoparsec >= 0.8 && < 0.11,
                    attoparsec-conduit >= 0.0 && < 0.1,
-                   http-conduit >= 1.1.0.1 && < 1.2,
+                   http-conduit == 1.2.*,
                    http-types >= 0.6 && < 0.7,
                    monad-control >= 0.3 && < 0.4,
-                   transformers >= 0.2 && < 0.3,
-                   transformers-base >= 0.4.1 && < 0.5,
+                   transformers == 0.2.*,
+                   transformers-base == 0.4.*,
                    lifted-base >= 0.1 && < 0.2,
                    bytestring >= 0.9 && < 0.10,
                    utf8-string >= 0.3 && < 0.4,
@@ -84,8 +84,9 @@ test-suite test
                    text >= 0.11 && < 0.12,
                    unordered-containers >= 0.1 && < 0.2,
                    syb,
-                   containers,
-                   blaze-builder
+                   containers >= 0.2,
+                   data-default,
+                   blaze-builder >= 0.2.1 && < 0.4
   ghc-options:     -Wall -rtsopts -threaded
   hs-source-dirs:  test
   main-is:         Main.hs
