@@ -12,10 +12,10 @@ module Database.CouchDB.Conduit.DB (
     couchPutDB,
     couchPutDB_,
     couchDeleteDB,
-    -- * Replication
-    couchReplicateDB,
     -- * Security
-    couchSecureDB
+    couchSecureDB,
+    -- * Replication
+    couchReplicateDB
 ) where
 
 import qualified Data.ByteString as B
@@ -26,7 +26,7 @@ import Data.Conduit (ResourceT)
 import qualified Network.HTTP.Conduit as H
 import qualified Network.HTTP.Types as HT
 
-import Database.CouchDB.Conduit (MonadCouch(..), Path)
+import Database.CouchDB.Conduit (MonadCouch(..))
 import Database.CouchDB.Conduit.LowLevel (couch, protect, protect')
 
 
@@ -49,6 +49,24 @@ couchDeleteDB :: MonadCouch m => ResourceT m ()
 couchDeleteDB = couch HT.methodDelete id [] []
                     (H.RequestBodyBS B.empty) protect' 
                     >> return ()
+
+-- | Maintain DB security.
+couchSecureDB :: MonadCouch m => 
+       [B.ByteString]   -- ^ Admin roles 
+    -> [B.ByteString]   -- ^ Admin names
+    -> [B.ByteString]   -- ^ Readers roles 
+    -> [B.ByteString]   -- ^ Readers names
+    -> ResourceT m ()       
+couchSecureDB adminRoles adminNames readersRoles readersNames = 
+    couch HT.methodPut (`B.append` "/_security") [] []
+            reqBody protect' 
+            >> return ()
+  where
+    reqBody = H.RequestBodyLBS $ A.encode $ A.object [
+            "admins" A..= A.object [ "roles" A..= adminRoles,
+                                     "names" A..= adminNames ],
+            "readers" A..= A.object [ "roles" A..= readersRoles,
+                                     "names" A..= readersNames ] ]
 
 -- | Database replication. 
 --
@@ -73,23 +91,6 @@ couchReplicateDB source target createTarget continuous cancel =
             "continuous" A..= continuous,
             "cancel" A..= cancel ]
 
-couchSecureDB :: MonadCouch m => 
-       Path             -- ^ Database
-    -> [B.ByteString]   -- ^ Admin roles 
-    -> [B.ByteString]   -- ^ Admin names
-    -> [B.ByteString]   -- ^ Readers roles 
-    -> [B.ByteString]   -- ^ Readers names
-    -> ResourceT m ()       
-couchSecureDB p adminRoles adminNames readersRoles readersNames = 
-    couch HT.methodPut (const $ p `B.append` "/_security") [] []
-            reqBody protect' 
-            >> return ()
-  where
-    reqBody = H.RequestBodyLBS $ A.encode $ A.object [
-            "admins" A..= A.object [ "roles" A..= adminRoles,
-                                     "names" A..= adminNames ],
-            "readers" A..= A.object [ "roles" A..= readersRoles,
-                                     "names" A..= readersNames ] ]
         
         
         
