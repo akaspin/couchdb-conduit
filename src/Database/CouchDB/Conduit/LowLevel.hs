@@ -20,8 +20,8 @@ import              Control.Monad.Base (liftBase)
 
 import              Data.Maybe (fromJust)
 import qualified    Data.ByteString as B
+import qualified    Data.ByteString.Char8 as BC8
 import qualified    Data.Aeson as A
-import qualified    Data.ByteString.UTF8 as BU8
 import qualified    Data.HashMap.Lazy as M
 import qualified    Data.Text as T
 
@@ -96,18 +96,19 @@ protect :: MonadCouch m =>
     -> (CouchResponse m -> ResourceT m (CouchResponse m)) -- ^ handler
     -> CouchResponse m   -- ^ Response
     -> ResourceT m (CouchResponse m)
-protect goodCodes h ~resp@(H.Response (HT.Status sc sm) _ bsrc)  
+protect goodCodes h ~resp@(H.Response (HT.Status sc sm) _ bsrc)
+    | sc == 304 = liftBase $ resourceThrow NotModified
     | sc `elem` goodCodes = h resp
     | otherwise = do
         v <- catch (bsrc $$ sinkParser A.json)
                    (\(_::SomeException) -> return A.Null)
-        liftBase $ resourceThrow $ CouchError (Just sc) $ msg v
+        liftBase $ resourceThrow $ CouchHttpError sc $ msg v
         where 
-        msg v = BU8.toString sm ++ reason v
-        reason (A.Object v) = case M.lookup "reason" v of
+        msg v = sm `B.append` reason v
+        reason (A.Object v) = BC8.pack $ case M.lookup "reason" v of
                 Just (A.String t) -> ": " ++ T.unpack t
                 _                 -> ""
-        reason _ = []
+        reason _ = B.empty
 
 -- | Protect from typical status codes. It's equivalent of
 --

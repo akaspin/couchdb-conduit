@@ -148,11 +148,18 @@ class ResourceIO m => MonadCouch m where
 instance (ResourceIO m) => MonadCouch (ReaderT CouchConnection m) where
     couchConnection = ask
 
--- | A Couch DB Error. If the error comes from http, the http status code 
---   is also given. Non-http errors include things like errors  
---   parsing the response.
-data CouchError = CouchError (Maybe Int) String
-    deriving (Show, Typeable)
+-- | A Couch DB Error.
+--   Note about @304 - Not Modified@. If  
+data CouchError 
+    = CouchHttpError Int B.ByteString
+        -- ^ Error comes from http.
+    | CouchInternalError B.ByteString
+        -- ^ Non-http errors include things like errors  
+        --   parsing the response.
+    | NotModified
+        -- ^ /Is not an error actually/. It is thrown when CouchDB returns 
+        --   @304 - Not Modified@ response to the request. 
+  deriving (Show, Typeable)
 instance Exception CouchError
 
 -- | Run a sequence of CouchDB actions. This function is a combination of 

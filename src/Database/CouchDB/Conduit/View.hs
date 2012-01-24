@@ -19,6 +19,7 @@ import              Control.Monad.Trans.Class (lift)
 import              Control.Applicative ((<|>))
 
 import qualified    Data.ByteString as B
+import qualified    Data.ByteString.Char8 as BC8
 import qualified    Data.HashMap.Lazy as M
 import qualified    Data.Aeson as A
 import              Data.Attoparsec
@@ -98,9 +99,9 @@ couchView' designDocName viewName q sink = do
 -- | Conduit for extract \"value\" field from CouchDB view row.
 rowValue :: ResourceIO m => Conduit A.Object m A.Value
 rowValue = CL.mapM (\v -> case M.lookup "value" v of
-                (Just o) -> return o
-                _ -> resourceThrow $ CouchError Nothing $ 
-                        "View row does not contain value: " ++ show v)
+            (Just o) -> return o
+            _ -> resourceThrow $ CouchInternalError $ BC8.pack
+                    ("View row does not contain value: " ++ show v))
 
 -----------------------------------------------------------------------------
 -- Internal Parser conduit
@@ -120,7 +121,7 @@ viewLoop = sequenceSink False $ \isLast ->
         vobj <- case v of
             (A.Object o) -> return o
             _ -> lift $ resourceThrow $ 
-                 CouchError Nothing "view entry is not an object"
+                 CouchInternalError "view entry is not an object"
         res <- CA.sinkParser (commaOrClose <?> "comma or close")
         case res of
             Comma -> return $ Emit False [vobj]

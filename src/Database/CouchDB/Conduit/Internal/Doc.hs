@@ -52,7 +52,7 @@ couchRev' :: MonadCouch m =>
 couchRev' p = 
     catch (couchRev p) handler404
   where
-    handler404 (CouchError (Just 404) _) = return B.empty
+    handler404 (CouchHttpError 404 _) = return B.empty
     handler404 e = lift $ resourceThrow e
 
 -- | Delete the given revision of the object.    
