@@ -148,8 +148,7 @@ class ResourceIO m => MonadCouch m where
 instance (ResourceIO m) => MonadCouch (ReaderT CouchConnection m) where
     couchConnection = ask
 
--- | A Couch DB Error.
---   Note about @304 - Not Modified@. If  
+-- | A CouchDB Error.
 data CouchError 
     = CouchHttpError Int B.ByteString
         -- ^ Error comes from http.
@@ -158,7 +157,8 @@ data CouchError
         --   parsing the response.
     | NotModified
         -- ^ /Is not an error actually/. It is thrown when CouchDB returns 
-        --   @304 - Not Modified@ response to the request. 
+        --   @304 - Not Modified@ response to the request. See 
+        --   <http://wiki.apache.org/couchdb/HTTP_Document_API>
   deriving (Show, Typeable)
 instance Exception CouchError
 

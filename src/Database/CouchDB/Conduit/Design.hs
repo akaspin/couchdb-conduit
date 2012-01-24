@@ -4,8 +4,8 @@
 --   convenient for bootstrapping and testing.
 
 module Database.CouchDB.Conduit.Design (
-    couchViewPut_,
-    couchViewPut'
+    couchPutView_,
+    couchPutView'
 ) where
 
 import              Prelude hiding (catch)
@@ -26,23 +26,23 @@ import Database.CouchDB.Conduit.Internal.Doc (couchGetWith,
 
 -- | Put view in design document if it not exists. If design document does 
 --   not exist, it will be created. 
-couchViewPut_ :: MonadCouch m =>
+couchPutView_ :: MonadCouch m =>
        Path                 -- ^ Design document
     -> Path                 -- ^ View name
     -> B.ByteString         -- ^ Map function
     -> Maybe B.ByteString   -- ^ Reduce function
     -> ResourceT m Revision
-couchViewPut_ = couchViewPutInt True
+couchPutView_ = couchViewPutInt True
 
 -- | Brute-force version of 'couchViewPut''. Put view in design document. 
 --   If design document does not exist, it will be created. 
-couchViewPut' :: MonadCouch m =>
+couchPutView' :: MonadCouch m =>
        Path                 -- ^ Design document
     -> Path                 -- ^ View name
     -> B.ByteString         -- ^ Map function
     -> Maybe B.ByteString   -- ^ Reduce function
     -> ResourceT m Revision
-couchViewPut' = couchViewPutInt False
+couchPutView' = couchViewPutInt False
 
 -----------------------------------------------------------------------------
 -- Internal

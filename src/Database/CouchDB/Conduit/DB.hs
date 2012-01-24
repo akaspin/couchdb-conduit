@@ -3,10 +3,8 @@
 
 {- | CouchDB database methods.
 
-> runCouch def $ couchPutDb "my_new_db"
-> runCouch def {couchDB="my_new_db"} $ couchPutDb "another_new_db"
-
-/Note./ All database methods ignores database settings in connection.
+> runCouch def {couchDB="my_db"} $ couchPutDb
+> runCouch def {couchDB="my_new_db"} $ couchPutDb
 -}
 
 module Database.CouchDB.Conduit.DB (
@@ -20,12 +18,8 @@ module Database.CouchDB.Conduit.DB (
     couchSecureDB
 ) where
 
---import Control.Applicative ((<$>), (<*>), empty)
-
 import qualified Data.ByteString as B
 import qualified Data.Aeson as A
---import Data.Generics (Data, Typeable)
---import Data.Default (Default (def))
 
 import Data.Conduit (ResourceT)
 
@@ -37,29 +31,22 @@ import Database.CouchDB.Conduit.LowLevel (couch, protect, protect')
 
 
 -- | Create CouchDB database. 
-couchPutDB :: MonadCouch m =>
-       Path     -- ^ CouchDB Database name.
-    -> ResourceT m ()
-couchPutDB p = couch HT.methodPut (const p) [] []
+couchPutDB :: MonadCouch m => ResourceT m ()
+couchPutDB = couch HT.methodPut id [] []
                     (H.RequestBodyBS B.empty) protect' 
                     >> return ()
 
 -- | \"Don't care\" version of couchPutDb. Create CouchDB database only in its 
 --   absence. For this it handles @412@ responses.
-couchPutDB_ :: MonadCouch m =>
-       Path     -- ^ CouchDB Database name.
-    -> ResourceT m ()
-couchPutDB_ p = 
-    couch HT.methodPut (const p) [] []
+couchPutDB_ :: MonadCouch m => ResourceT m ()
+couchPutDB_ = couch HT.methodPut id [] []
                     (H.RequestBodyBS B.empty) 
                     (protect [200, 201, 202, 304, 412] return) 
                     >> return ()
 
 -- | Delete a database.
-couchDeleteDB :: MonadCouch m => 
-       Path     -- ^ CouchDB Database name.
-    -> ResourceT m ()
-couchDeleteDB p = couch HT.methodDelete (const p) [] []
+couchDeleteDB :: MonadCouch m => ResourceT m ()
+couchDeleteDB = couch HT.methodDelete id [] []
                     (H.RequestBodyBS B.empty) protect' 
                     >> return ()
 

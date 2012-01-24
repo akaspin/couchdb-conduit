@@ -37,8 +37,10 @@ case_justConnect = runCouch def $ do
 
 -- | Put and delete
 case_dbPut :: Assertion    
-case_dbPut =  runCouch def {couchLogin = login, couchPass=pass} $ do
-    couchPutDB_ "cdbc_dbputdel"
-    couchDeleteDB "cdbc_dbputdel"
+case_dbPut =  runCouch def {couchLogin = login, 
+                            couchPass=pass,
+                            couchDB="cdbc_dbputdel"} $ do
+    couchPutDB_
+    couchDeleteDB
     
     
