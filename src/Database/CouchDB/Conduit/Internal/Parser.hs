@@ -9,7 +9,7 @@ import qualified    Data.Text.Encoding as TE
 import qualified    Data.HashMap.Lazy as M
 import qualified    Data.Aeson as A
 
-import              Database.CouchDB.Conduit
+import              Database.CouchDB.Conduit.Internal.Connection
 
 extractField :: T.Text -> A.Value -> Either CouchError A.Value
 extractField s (A.Object o) = 

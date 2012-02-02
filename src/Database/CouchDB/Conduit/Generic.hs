@@ -58,7 +58,7 @@ import              Data.Conduit (ResourceT, Conduit(..), ResourceIO)
 
 import qualified    Network.HTTP.Types as HT
 
-import              Database.CouchDB.Conduit
+import              Database.CouchDB.Conduit.Internal.Connection
 import              Database.CouchDB.Conduit.Internal.Doc
 import              Database.CouchDB.Conduit.Internal.View
 

@@ -31,7 +31,7 @@ import qualified    Data.Conduit.Attoparsec as CA
 import qualified    Network.HTTP.Conduit as H
 import qualified    Network.HTTP.Types as HT
 
-import              Database.CouchDB.Conduit
+import              Database.CouchDB.Conduit.Internal.Connection
 import              Database.CouchDB.Conduit.LowLevel (couch')
 
 -----------------------------------------------------------------------------

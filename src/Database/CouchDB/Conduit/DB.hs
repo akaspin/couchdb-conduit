@@ -26,7 +26,7 @@ import Data.Conduit (ResourceT)
 import qualified Network.HTTP.Conduit as H
 import qualified Network.HTTP.Types as HT
 
-import Database.CouchDB.Conduit (MonadCouch(..))
+import Database.CouchDB.Conduit.Internal.Connection (MonadCouch(..))
 import Database.CouchDB.Conduit.LowLevel (couch, protect, protect')
 
 

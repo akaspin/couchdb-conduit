@@ -32,7 +32,7 @@ import              Data.Conduit.Attoparsec (sinkParser)
 import qualified    Network.HTTP.Conduit as H
 import qualified    Network.HTTP.Types as HT
 
-import              Database.CouchDB.Conduit
+import              Database.CouchDB.Conduit.Internal.Connection
 
 -- | CouchDB response
 type CouchResponse m = H.Response (Source m B.ByteString)

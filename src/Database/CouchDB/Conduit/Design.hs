@@ -20,7 +20,8 @@ import qualified    Data.HashMap.Lazy as M
 import qualified    Data.Aeson as A
 import qualified    Data.Aeson.Types as AT
 
-import Database.CouchDB.Conduit (MonadCouch, CouchError, Path, mkPath, Revision)
+import Database.CouchDB.Conduit.Internal.Connection 
+        (MonadCouch, CouchError, Path, mkPath, Revision)
 import Database.CouchDB.Conduit.Internal.Doc (couchGetWith, 
             couchPutWith_, couchPutWith')
 
