@@ -53,9 +53,9 @@ case_createView :: Assertion
 case_createView = bracket_
     (setupDB db)
     (tearDB db) $ runCouch (conn db) $ do
-        rev <- couchPutView' "mydesign" "myview"
+        rev <- couchPutView' db "mydesign" "myview"
             "function(doc){emit(null, doc);}" Nothing
-        rev' <- CCG.couchRev "_design/mydesign"
+        rev' <- couchRev db "_design/mydesign"
         liftIO $ rev @=? rev' 
   where 
     db = "cdbc_test_view_create"
@@ -63,13 +63,13 @@ case_createView = bracket_
 case_bigValues :: Assertion
 case_bigValues = bracket_
     (runCouch (conn db) $ do
-        couchPutDB_
-        _ <- couchPutView' "mydesign" "myview"
+        couchPutDB_ db
+        _ <- couchPutView' db "mydesign" "myview"
                 "function(doc){emit(doc.intV, doc);}" Nothing
-        mapM_ (\n -> CCG.couchPut' (docName n) [] $ doc n) [1..20]
+        mapM_ (\n -> CCG.couchPut' db (docName n) [] $ doc n) [1..20]
     )
     (tearDB db) $ runCouch (conn db) $ do
-        res <- couchView' "mydesign" "myview" [] $ 
+        res <- couchView' db "mydesign" "myview" [] $ 
             (rowValue =$= CCG.toType) =$ CL.consume 
         mapM_ (\(a, b) -> liftIO $ a @=? doc b) $ zip res [1..20]
   where 
@@ -81,13 +81,13 @@ data ReducedView = ReducedView Int deriving (Show, Eq, Data, Typeable)
 case_withReduce :: Assertion    
 case_withReduce = bracket_
     (runCouch (conn db) $ do
-        couchPutDB_
-        _ <- couchPutView' "mydesign" "myview"
+        couchPutDB_ db
+        _ <- couchPutView' db "mydesign" "myview"
                 "function(doc){emit(doc.intV, doc.intV);}" 
                 $ Just "function(keys, values){return sum(values);}"
-        mapM_ (\n -> CCG.couchPut' (docName n) [] $ doc n) [1..20])
+        mapM_ (\n -> CCG.couchPut' db (docName n) [] $ doc n) [1..20])
     (tearDB db) $ runCouch (conn db) $ do
-        res <- couchView' "mydesign" "myview" [] $
+        res <- couchView' db "mydesign" "myview" [] $
             (rowValue =$= CCG.toType) =$ CL.consume
         liftIO $ res @=? [ReducedView 210]
   where

@@ -32,7 +32,7 @@ import qualified    Network.HTTP.Conduit as H
 import qualified    Network.HTTP.Types as HT
 
 import              Database.CouchDB.Conduit.Internal.Connection
-import              Database.CouchDB.Conduit.LowLevel (couch')
+import              Database.CouchDB.Conduit.LowLevel (couch, protect')
 
 -----------------------------------------------------------------------------
 -- Running
@@ -56,23 +56,24 @@ import              Database.CouchDB.Conduit.LowLevel (couch')
 -- > runCouch def {couchDB="mydb"} $ do
 -- >
 -- >     -- Print all upon receipt.
--- >     src <- couchView "mydesign" "myview" [] 
+-- >     src <- couchView "mydb" "mydesign" "myview" [] 
 -- >     src $$ CL.mapM_ (liftIO . print)
 -- >
 -- >     -- ... Or extract row value and consume
--- >     src' <- couchView "mydesign" "myview" [] 
+-- >     src' <- couchView "mydb" "mydesign" "myview" [] 
 -- >     res <- src' $= rowValue $$ CL.consume
 couchView :: MonadCouch m =>
-       Path                 -- ^ Design document
+       Path                 -- ^ Database
+    -> Path                 -- ^ Design document
     -> Path                 -- ^ View name
     -> HT.Query             -- ^ Query parameters
     -> ResourceT m (Source m A.Object)
-couchView designDocName viewName q = do
-    H.Response _ _ bsrc <- couch' HT.methodGet fullPath [] q 
-        (H.RequestBodyBS B.empty)
+couchView db designDocName viewName q = do
+    H.Response _ _ bsrc <- couch HT.methodGet fullPath [] q 
+        (H.RequestBodyBS B.empty) protect'
     return $ bsrc $= conduitCouchView
   where
-    fullPath = B.concat ["_design/", designDocName, "/_view/", viewName]
+    fullPath = mkPath [db, "_design", designDocName, "_view", viewName]
 
 -- | Brain-free version of 'couchView'. Takes 'Sink' to consume response.
 --
@@ -84,17 +85,18 @@ couchView designDocName viewName q = do
 -- >     -- ... Or extract row value and consume
 -- >     res <- couchView' "mydesign" "myview" [] $ rowValue =$ CL.consume
 couchView' :: MonadCouch m =>
-       Path                 -- ^ Design document
+       Path                 -- ^ Database
+    -> Path                 -- ^ Design document
     -> Path                 -- ^ View name
     -> HT.Query             -- ^ Query parameters
     -> Sink A.Object m a    -- ^ Sink for handle view rows.
     -> ResourceT m a
-couchView' designDocName viewName q sink = do
-    H.Response _ _ bsrc <- couch' HT.methodGet fullPath [] q 
-        (H.RequestBodyBS B.empty)
+couchView' db designDocName viewName q sink = do
+    H.Response _ _ bsrc <- couch HT.methodGet fullPath [] q 
+        (H.RequestBodyBS B.empty) protect'
     bsrc $= conduitCouchView $$ sink
   where
-    fullPath = mkPath ["_design", designDocName, "_view", viewName]
+    fullPath = mkPath [db, "_design", designDocName, "_view", viewName]
 
 -- | Conduit for extract \"value\" field from CouchDB view row.
 rowValue :: ResourceIO m => Conduit A.Object m A.Value

@@ -6,7 +6,8 @@ import              Data.Conduit (resourceThrow, Conduit(..), ResourceIO)
 import qualified    Data.Conduit.List as CL (mapM)
 import Data.ByteString.Char8 (pack)
 
-import              Database.CouchDB.Conduit.Internal.Connection
+import              Database.CouchDB.Conduit.Internal.Connection 
+                        (CouchError(..))
 
 -- | Convert CouchDB view row or row value from 'Database.CouchDB.Conduit.View' 
 --   to concrete type.

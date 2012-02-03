@@ -21,21 +21,21 @@
 -- > instance ToJSON D where
 -- >    toJSON (D f1 f2) = object ["f1" .= f1, "f2" .= f2]
 -- > 
--- > runCouch def {couchDB="mydb"} $ do
+-- > runCouch def $ do
 -- >    -- Put new doc and update it
--- >    rev1 <- couchPut "my-doc1" "" [] $ D 123 "str"         
--- >    rev2 <- couchPut "my-doc1" rev1 [] $ D 1234 "another"
+-- >    rev1 <- couchPut "mydb" "my-doc1" "" [] $ D 123 "str"         
+-- >    rev2 <- couchPut "mydb" "my-doc1" rev1 [] $ D 1234 "another"
 -- >
 -- >    -- get it and print
--- >    (rev3, d1 :: D) <- couchGet "my-doc1" [] 
+-- >    (rev3, d1 :: D) <- couchGet "mydb" "my-doc1" [] 
 -- >    liftIO $ print d1
 -- >
 -- >    -- update it in brute-force manner    
--- >    couchPut' "my-doc1" [] $ D 12345 "third"    -- notice - no rev
+-- >    couchPut' "mydb" "my-doc1" [] $ D 12345 "third"    -- notice - no rev
 -- >    
 -- >    -- get revision and delete
--- >    rev3 <- couchRev "my-doc1"
--- >    couchDelete "my-doc1" rev3
+-- >    rev3 <- couchRev "mydb" "my-doc1"
+-- >    couchDelete "mydb" "my-doc1" rev3
 -- 
 --   For details of types see "Data.Aeson". To work with documents in 
 --   generic manner, look at "Database.CouchDB.Conduit.Generic".
@@ -43,13 +43,10 @@
 module Database.CouchDB.Conduit.Explicit (
     -- * Accessing documents
     couchGet,
-    couchRev,
-    couchRev',
     -- * Manipulating documents
     couchPut,
     couchPut_,
     couchPut',
-    couchDelete,
     -- * Working with views #view#
     toType
 ) where
@@ -60,7 +57,7 @@ import              Data.Conduit (ResourceT, Conduit(..), ResourceIO)
 import              Network.HTTP.Types as HT
 
 import              Database.CouchDB.Conduit.Internal.Connection 
-                            (MonadCouch(..), Path, Revision)
+                            (MonadCouch(..), Path, Revision, mkPath)
 import              Database.CouchDB.Conduit.Internal.Doc 
 import              Database.CouchDB.Conduit.Internal.View (toTypeWith)
 
@@ -70,38 +67,42 @@ import              Database.CouchDB.Conduit.Internal.View (toTypeWith)
 
 -- | Load a single 'A.ToJSON' object with 'Revision' from couch DB. 
 couchGet :: (MonadCouch m, A.FromJSON a) => 
-       Path         -- ^ Document path
+       Path         -- ^ Database
+    -> Path         -- ^ Document path
     -> HT.Query     -- ^ Query
     -> ResourceT m (Revision, a)
-couchGet = couchGetWith A.fromJSON
+couchGet db p = couchGetWith A.fromJSON (mkPath [db, p])
 
 -- | Put an 'A.FromJSON' object in Couch DB with revision, returning the 
 --   new 'Revision'.
 couchPut :: (MonadCouch m, A.ToJSON a) => 
-        Path        -- ^ Document path.
-     -> Revision    -- ^ Document revision. For new docs provide empty string.
-     -> HT.Query    -- ^ Query arguments.
-     -> a           -- ^ The object to store.
-     -> ResourceT m Revision      
-couchPut = couchPutWith A.encode
+       Path         -- ^ Database
+    -> Path         -- ^ Document path
+    -> Revision    -- ^ Document revision. For new docs provide empty string.
+    -> HT.Query    -- ^ Query arguments.
+    -> a           -- ^ The object to store.
+    -> ResourceT m Revision      
+couchPut db p = couchPutWith A.encode (mkPath [db, p])
 
 -- | \"Don't care\" version of 'couchPut'. Creates document only in its 
 --   absence.
 couchPut_ :: (MonadCouch m, A.ToJSON a) => 
-        Path        -- ^ Document path.
-     -> HT.Query    -- ^ Query arguments.
-     -> a           -- ^ The object to store.
-     -> ResourceT m Revision      
-couchPut_ = couchPutWith_ A.encode
+       Path         -- ^ Database
+    -> Path         -- ^ Document path
+    -> HT.Query    -- ^ Query arguments.
+    -> a           -- ^ The object to store.
+    -> ResourceT m Revision      
+couchPut_ db p = couchPutWith_ A.encode (mkPath [db, p])
 
 -- | Brute force version of 'couchPut'. Creates a document regardless of 
 --   presence. 
 couchPut' :: (MonadCouch m, A.ToJSON a) => 
-        Path        -- ^ Document path.
-     -> HT.Query    -- ^ Query arguments.
-     -> a           -- ^ The object to store.
-     -> ResourceT m Revision      
-couchPut' = couchPutWith' A.encode
+       Path         -- ^ Database
+    -> Path         -- ^ Document path
+    -> HT.Query    -- ^ Query arguments.
+    -> a           -- ^ The object to store.
+    -> ResourceT m Revision      
+couchPut' db p = couchPutWith' A.encode (mkPath [db, p])
 
 ------------------------------------------------------------------------------
 -- View conduit

@@ -40,25 +40,25 @@ case_justPutGet :: Assertion
 case_justPutGet = bracket_
     setup teardown $
     runCouch (conn dbName) $ do
-        rev <- couchPut "doc-just" "" [] $ TestDoc "doc" 1 "1"
-        rev' <- couchPut "doc-just" rev [] $ TestDoc "doc" 2 "2"
-        rev'' <- couchRev "doc-just"
+        rev <- couchPut dbName "doc-just" "" [] $ TestDoc "doc" 1 "1"
+        rev' <- couchPut dbName "doc-just" rev [] $ TestDoc "doc" 2 "2"
+        rev'' <- couchRev dbName "doc-just"
         liftIO $ rev' @=? rev''
-        couchDelete "doc-just" rev''
+        couchDelete dbName "doc-just" rev''
 
 case_massFlow :: Assertion
 case_massFlow = bracket_
     setup teardown $
     runCouch (conn dbName) $ do
         revs <- mapM (\n -> 
-                couchPut (docn n) "" [] $ TestDoc "doc" n $ show n
+                couchPut dbName (docn n) "" [] $ TestDoc "doc" n $ show n
             ) [1..100]
         liftIO $ length revs @=? 100
-        revs' <- mapM (\n -> couchRev $ docn n) [1..100]
+        revs' <- mapM (\n -> couchRev dbName $ docn n) [1..100]
         liftIO $ revs @=? revs'
         liftIO $ length revs' @=? 100
         mapM_ (\(n,r) ->
-            couchDelete (docn n) r) $ zip [1..100] revs'
+            couchDelete dbName (docn n) r) $ zip [1..100] revs'
   where
     docn n = fromString $ "doc-" ++ show (n :: Int)    
 
@@ -70,13 +70,13 @@ case_massIter = bracket_
         mapM_ (\n -> do
             let name = docn n 
             let d = TestDoc "doc" n $ show n
-            rev <- couchPut name "" [] d
-            couchDelete (docn n) rev
-            _ <- couchPut name "" [] d
-            rev'' <- couchPut' name [] d
-            (_, d') <- couchGet name []
+            rev <- couchPut dbName name "" [] d
+            couchDelete dbName (docn n) rev
+            _ <- couchPut dbName name "" [] d
+            rev'' <- couchPut' dbName name [] d
+            (_, d') <- couchGet dbName name []
             liftIO $ d @=? d'
-            couchDelete (docn n) rev''
+            couchDelete dbName (docn n) rev''
          ) [1..100]
   where
     docn n = fromString $ "doc-" ++ show (n :: Int) 

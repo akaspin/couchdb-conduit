@@ -6,7 +6,6 @@
 module Database.CouchDB.Conduit.LowLevel (
     CouchResponse,
     couch,
-    couch',
     protect,
     protect'
 ) where
@@ -43,21 +42,21 @@ type CouchResponse m = H.Response (Source m B.ByteString)
 --   attachments that are not in JSON format.
 couch :: MonadCouch m =>
        HT.Method                -- ^ Method
-    -> (Path -> Path)           -- ^ Path creation function
+    -> Path                     -- ^ Correct 'Path' with escaped fragments.
     -> HT.RequestHeaders        -- ^ Headers
     -> HT.Query                 -- ^ Query args
     -> H.RequestBody m          -- ^ Request body
     -> (CouchResponse m -> ResourceT m (CouchResponse m))
                                 -- ^ Protect function. See 'protect'
     -> ResourceT m (CouchResponse m)
-couch meth pathFn hdrs qs reqBody protectFn = do
+couch meth path hdrs qs reqBody protectFn = do
     conn <- lift couchConnection
     let req = H.def 
             { H.method          = meth
             , H.host            = couchHost conn
             , H.requestHeaders  = hdrs
             , H.port            = couchPort conn
-            , H.path            = pathFn $ couchDB conn
+            , H.path            = path
             , H.queryString     = HT.renderQuery False qs
             , H.requestBody     = reqBody
             , H.checkStatus = const . const $ Nothing }
@@ -66,23 +65,6 @@ couch meth pathFn hdrs qs reqBody protectFn = do
             (couchLogin conn) (couchPass conn) req
     res <- H.http req' (fromJust $ couchManager conn)
     protectFn res
-
--- | Simplified version of 'couch'. This version uses standart path 
---   creation and protect functions.
-couch' :: MonadCouch m =>
-       HT.Method                -- ^ Method
-    -> Path                     -- ^ Path
-    -> HT.RequestHeaders        -- ^ Headers
-    -> HT.Query                 -- ^ Query args
-    -> H.RequestBody m          -- ^ Request body
-    -> ResourceT m (CouchResponse m)
-couch' meth p hdrs qs reqBody = 
-        couch meth 
-        (\dbP -> B.intercalate "/" . filter (/="") $ [dbP, p])
-        hdrs
-        qs
-        reqBody
-        protect'   
 
 -- | Protect 'H.Response' from bad status codes. If status code in list 
 --   of status codes - just return response. Otherwise - throw 'CouchError'.

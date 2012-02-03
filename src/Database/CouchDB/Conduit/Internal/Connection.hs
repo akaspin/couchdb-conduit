@@ -61,12 +61,14 @@ import qualified    Blaze.ByteString.Builder as BLB
 -- fragments /must/ be escaped.
 -- 
 -- > database/_design/my%2Fdesign/_view/my%2Fview
+--
+-- Except low-level functions, @couchdb-conduit@ escapes all segments in paths.  
 type Path = B.ByteString
 
 -- | Represents a revision of a CouchDB Document. 
 type Revision = B.ByteString
 
--- | Make correct path from escaped fragments. Filter empty fragments.
+-- | Make correct path and escape fragments. Filter empty fragments.
 --
 -- > mkPath ["db", "", "doc/with/slashes"]
 -- > db/doc%2Fwith%2Fslashes

@@ -14,21 +14,21 @@
 -- > -- | Our doc with instances
 -- > data D = D { f1 :: Int, f2 :: String } deriving (Show, Data, Typeable)
 -- > 
--- > runCouch def {couchDB="mydb"} $ do
+-- > runCouch def $ do
 -- >    -- Put new doc and update it
--- >    rev1 <- couchPut "my-doc1" "" [] $ D 123 "str"         
--- >    rev2 <- couchPut "my-doc1" rev1 [] $ D 1234 "another"
+-- >    rev1 <- couchPut "mydb" "my-doc1" "" [] $ D 123 "str"         
+-- >    rev2 <- couchPut "mydb" "my-doc1" rev1 [] $ D 1234 "another"
 -- >
 -- >    -- get it and print
--- >    (rev3, d1 :: D) <- couchGet "my-doc1" [] 
+-- >    (rev3, d1 :: D) <- couchGet "mydb" "my-doc1" [] 
 -- >    liftIO $ print d1
 -- >
 -- >    -- update it in brute-force manner    
--- >    couchPut' "my-doc1" [] $ D 12345 "third"    -- notice - no rev
+-- >    couchPut' "mydb" "my-doc1" [] $ D 12345 "third"    -- notice - no rev
 -- >    
 -- >    -- get revision and delete
--- >    rev3 <- couchRev "my-doc1"
--- >    couchDelete "my-doc1" rev3
+-- >    rev3 <- couchRev "mydb" "my-doc1"
+-- >    couchDelete "mydb" "my-doc1" rev3
 --  
 --   The main advantage of this approach in the absence of tonns of  
 --   boilerplate code. The main disadvantage is inability to influence the 
@@ -40,13 +40,10 @@
 module Database.CouchDB.Conduit.Generic (
      -- * Accessing documents
     couchGet,
-    couchRev,
-    couchRev',
     -- * Manipulating documents
     couchPut,
     couchPut_,
     couchPut',
-    couchDelete,
     -- * Working with views #view#
     toType
 ) where
@@ -64,37 +61,41 @@ import              Database.CouchDB.Conduit.Internal.View
 
 -- | Load a single object from couch DB.
 couchGet :: (MonadCouch m, Data a) => 
-       Path         -- ^ Document path
+       Path         -- ^ Database
+    -> Path         -- ^ Document path
     -> HT.Query     -- ^ Query
     -> ResourceT m (Revision, a)
-couchGet = couchGetWith AG.fromJSON  
+couchGet db p = couchGetWith AG.fromJSON (mkPath [db, p])  
 
 -- | Put an object in Couch DB with revision, returning the new Revision.
 couchPut :: (MonadCouch m, Data a) => 
-        Path        -- ^ Document path.
-     -> Revision    -- ^ Document revision. For new docs provide empty string.
-     -> HT.Query    -- ^ Query arguments.
-     -> a           -- ^ The object to store.
-     -> ResourceT m Revision      
-couchPut = couchPutWith AG.encode
+       Path         -- ^ Database
+    -> Path         -- ^ Document path
+    -> Revision    -- ^ Document revision. For new docs provide empty string.
+    -> HT.Query    -- ^ Query arguments.
+    -> a           -- ^ The object to store.
+    -> ResourceT m Revision      
+couchPut db p = couchPutWith AG.encode (mkPath [db, p])
     
 -- | \"Don't care\" version of 'couchPut'. Creates document only in its 
 --   absence.
 couchPut_ :: (MonadCouch m, Data a) => 
-        Path        -- ^ Document path.
-     -> HT.Query    -- ^ Query arguments.
-     -> a           -- ^ The object to store.
-     -> ResourceT m Revision      
-couchPut_ = couchPutWith_ AG.encode
+       Path         -- ^ Database
+    -> Path         -- ^ Document path
+    -> HT.Query    -- ^ Query arguments.
+    -> a           -- ^ The object to store.
+    -> ResourceT m Revision      
+couchPut_ db p = couchPutWith_ AG.encode (mkPath [db, p])
 
 -- | Brute force version of 'couchPut'. Creates a document regardless of 
 --   presence. 
 couchPut' :: (MonadCouch m, Data a) => 
-        Path        -- ^ Document path.
-     -> HT.Query    -- ^ Query arguments.
-     -> a           -- ^ The object to store.
-     -> ResourceT m Revision      
-couchPut' = couchPutWith' AG.encode
+       Path         -- ^ Database
+    -> Path         -- ^ Document path
+    -> HT.Query    -- ^ Query arguments.
+    -> a           -- ^ The object to store.
+    -> ResourceT m Revision      
+couchPut' db p = couchPutWith' AG.encode (mkPath [db, p])
 
 ------------------------------------------------------------------------------
 -- View conduit

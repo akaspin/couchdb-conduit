@@ -31,16 +31,15 @@ tests = mutuallyExclusive $ testGroup "Base" [
 -- | Just connect
 case_justConnect :: Assertion
 case_justConnect = runCouch def $ do
-    H.Response (HT.Status sc _) _h _bsrc <- couch' HT.methodGet "" [] [] 
-                    (H.RequestBodyBS B.empty)
+    H.Response (HT.Status sc _) _h _bsrc <- couch HT.methodGet "" [] [] 
+                    (H.RequestBodyBS B.empty) protect'
     liftIO $ sc @=? 200
 
 -- | Put and delete
 case_dbPut :: Assertion    
 case_dbPut =  runCouch def {couchLogin = login, 
-                            couchPass=pass,
-                            couchDB="cdbc_dbputdel"} $ do
-    couchPutDB_
-    couchDeleteDB
+                            couchPass=pass} $ do
+    couchPutDB_ "cdbc_dbputdel"
+    couchDeleteDB "cdbc_dbputdel"
     
     

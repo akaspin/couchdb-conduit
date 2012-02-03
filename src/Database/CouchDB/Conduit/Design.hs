@@ -28,7 +28,8 @@ import Database.CouchDB.Conduit.Internal.Doc (couchGetWith,
 -- | Put view in design document if it not exists. If design document does 
 --   not exist, it will be created. 
 couchPutView_ :: MonadCouch m =>
-       Path                 -- ^ Design document
+       Path                 -- ^ Database
+    -> Path                 -- ^ Design document
     -> Path                 -- ^ View name
     -> B.ByteString         -- ^ Map function
     -> Maybe B.ByteString   -- ^ Reduce function
@@ -38,7 +39,8 @@ couchPutView_ = couchViewPutInt True
 -- | Brute-force version of 'couchViewPut''. Put view in design document. 
 --   If design document does not exist, it will be created. 
 couchPutView' :: MonadCouch m =>
-       Path                 -- ^ Design document
+       Path                 -- ^ Database
+    -> Path                 -- ^ Design document
     -> Path                 -- ^ View name
     -> B.ByteString         -- ^ Map function
     -> Maybe B.ByteString   -- ^ Reduce function
@@ -50,19 +52,20 @@ couchPutView' = couchViewPutInt False
 -----------------------------------------------------------------------------
 
 couchViewPutInt :: MonadCouch m =>
-       Bool
+       Bool                 -- ^ Care flag
+    -> Path                 -- ^ Database
     -> Path                 -- ^ Design document
     -> Path                 -- ^ View name
     -> B.ByteString         -- ^ Map function
     -> Maybe B.ByteString   -- ^ Reduce function
     -> ResourceT m Revision
-couchViewPutInt prot designName viewName mapF reduceF = do
+couchViewPutInt prot db designName viewName mapF reduceF = do
     -- Get design or empty object
     (_, A.Object d) <- getDesignDoc path
     if prot then couchPutWith_ A.encode path [] $ inferViews (purge_ d)
             else couchPutWith' A.encode path [] $ inferViews (purge_ d)
   where
-    path = designDocPath designName
+    path = designDocPath db designName
     inferViews d = A.Object $ M.insert "views" (addView d) d
     addView d = A.Object $ M.insert 
         (TE.decodeUtf8 viewName)
@@ -72,13 +75,15 @@ couchViewPutInt prot designName viewName mapF reduceF = do
     constructView m (Just r) = A.object ["map" A..= m, "reduce" A..= r]
     constructView m Nothing = A.object ["map" A..= m]
 
-getDesignDoc :: MonadCouch m => Path -> ResourceT m (Revision, AT.Value)
+getDesignDoc :: MonadCouch m => 
+       Path 
+    -> ResourceT m (Revision, AT.Value)
 getDesignDoc designName = catch 
-        (couchGetWith A.Success (designDocPath designName) [])
+        (couchGetWith A.Success designName [])
         (\(_ :: CouchError) -> return (B.empty, AT.emptyObject))
     
-designDocPath :: Path -> Path
-designDocPath dn = mkPath ["_design", dn]
+designDocPath :: Path -> Path -> Path
+designDocPath db dn = mkPath [db, "_design", dn]
 
 -- | Purge underscore fields
 purge_ :: AT.Object -> AT.Object

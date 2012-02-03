@@ -9,7 +9,8 @@ import qualified    Data.Text.Encoding as TE
 import qualified    Data.HashMap.Lazy as M
 import qualified    Data.Aeson as A
 
-import              Database.CouchDB.Conduit.Internal.Connection
+import              Database.CouchDB.Conduit.Internal.Connection 
+                        (CouchError(..), Revision)
 
 extractField :: T.Text -> A.Value -> Either CouchError A.Value
 extractField s (A.Object o) = 
@@ -31,7 +32,7 @@ jsonToTypeWith :: ResourceIO m =>
              -> A.Value 
              -> m a
 jsonToTypeWith f j = case f j of
-        A.Error e -> resourceThrow $ CouchInternalError $ BU8.fromString $
-                        ("Error parsing json: " ++ e)
+        A.Error e -> resourceThrow $ CouchInternalError $ 
+                        BU8.fromString ("Error parsing json: " ++ e)
         A.Success o -> return o
 

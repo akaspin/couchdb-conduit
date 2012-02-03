@@ -18,6 +18,8 @@ module Database.CouchDB.Conduit.DB (
     couchReplicateDB
 ) where
 
+import Control.Monad (void)
+
 import qualified Data.ByteString as B
 import qualified Data.Aeson as A
 
@@ -26,41 +28,50 @@ import Data.Conduit (ResourceT)
 import qualified Network.HTTP.Conduit as H
 import qualified Network.HTTP.Types as HT
 
-import Database.CouchDB.Conduit.Internal.Connection (MonadCouch(..))
+import Database.CouchDB.Conduit.Internal.Connection 
+            (MonadCouch(..), Path, mkPath)
 import Database.CouchDB.Conduit.LowLevel (couch, protect, protect')
 
 
 -- | Create CouchDB database. 
-couchPutDB :: MonadCouch m => ResourceT m ()
-couchPutDB = couch HT.methodPut id [] []
-                    (H.RequestBodyBS B.empty) protect' 
-                    >> return ()
+couchPutDB :: MonadCouch m => 
+       Path             -- ^ Database
+    -> ResourceT m ()
+couchPutDB db = void $ couch HT.methodPut 
+                            (mkPath [db]) [] [] 
+                            (H.RequestBodyBS B.empty)
+                            protect'
 
 -- | \"Don't care\" version of couchPutDb. Create CouchDB database only in its 
 --   absence. For this it handles @412@ responses.
-couchPutDB_ :: MonadCouch m => ResourceT m ()
-couchPutDB_ = couch HT.methodPut id [] []
+couchPutDB_ :: MonadCouch m => 
+       Path             -- ^ Database
+    -> ResourceT m ()
+couchPutDB_ db = void $ couch HT.methodPut 
+                    (mkPath [db]) [] []
                     (H.RequestBodyBS B.empty) 
                     (protect [200, 201, 202, 304, 412] return) 
-                    >> return ()
 
 -- | Delete a database.
-couchDeleteDB :: MonadCouch m => ResourceT m ()
-couchDeleteDB = couch HT.methodDelete id [] []
+couchDeleteDB :: MonadCouch m => 
+       Path             -- ^ Database
+    -> ResourceT m ()
+couchDeleteDB db = void $ couch HT.methodDelete 
+                    (mkPath [db]) [] []
                     (H.RequestBodyBS B.empty) protect' 
-                    >> return ()
 
 -- | Maintain DB security.
 couchSecureDB :: MonadCouch m => 
-       [B.ByteString]   -- ^ Admin roles 
+       Path             -- ^ Database
+    -> [B.ByteString]   -- ^ Admin roles 
     -> [B.ByteString]   -- ^ Admin names
     -> [B.ByteString]   -- ^ Readers roles 
     -> [B.ByteString]   -- ^ Readers names
     -> ResourceT m ()       
-couchSecureDB adminRoles adminNames readersRoles readersNames = 
-    couch HT.methodPut (`B.append` "/_security") [] []
+couchSecureDB db adminRoles adminNames readersRoles readersNames = 
+    void $ couch HT.methodPut 
+            (mkPath [db, "_security"]) [] []
             reqBody protect' 
-            >> return ()
   where
     reqBody = H.RequestBodyLBS $ A.encode $ A.object [
             "admins" A..= A.object [ "roles" A..= adminRoles,
@@ -80,9 +91,8 @@ couchReplicateDB :: MonadCouch m =>
     -> Bool             -- ^ Cancel flag
     -> ResourceT m ()
 couchReplicateDB source target createTarget continuous cancel = 
-    couch HT.methodPost (const "_replicate") [] []
+    void $ couch HT.methodPost "_replicate" [] []
             reqBody protect' 
-            >> return ()
   where
     reqBody = H.RequestBodyLBS $ A.encode $ A.object [
             "source" A..= source,
