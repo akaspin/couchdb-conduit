@@ -52,7 +52,7 @@ instance A.ToJSON T where
 case_createView :: Assertion
 case_createView = bracket_
     (setupDB db)
-    (tearDB db) $ runCouch (conn db) $ do
+    (tearDB db) $ runCouch conn $ do
         rev <- couchPutView' db "mydesign" "myview"
             "function(doc){emit(null, doc);}" Nothing
         rev' <- couchRev db "_design/mydesign"
@@ -62,13 +62,13 @@ case_createView = bracket_
 
 case_bigValues :: Assertion
 case_bigValues = bracket_
-    (runCouch (conn db) $ do
+    (runCouch conn $ do
         couchPutDB_ db
         _ <- couchPutView' db "mydesign" "myview"
                 "function(doc){emit(doc.intV, doc);}" Nothing
         mapM_ (\n -> CCG.couchPut' db (docName n) [] $ doc n) [1..20]
     )
-    (tearDB db) $ runCouch (conn db) $ do
+    (tearDB db) $ runCouch conn $ do
         res <- couchView' db "mydesign" "myview" [] $ 
             (rowValue =$= CCG.toType) =$ CL.consume 
         mapM_ (\(a, b) -> liftIO $ a @=? doc b) $ zip res [1..20]
@@ -80,13 +80,13 @@ data ReducedView = ReducedView Int deriving (Show, Eq, Data, Typeable)
 
 case_withReduce :: Assertion    
 case_withReduce = bracket_
-    (runCouch (conn db) $ do
+    (runCouch conn $ do
         couchPutDB_ db
         _ <- couchPutView' db "mydesign" "myview"
                 "function(doc){emit(doc.intV, doc.intV);}" 
                 $ Just "function(keys, values){return sum(values);}"
         mapM_ (\n -> CCG.couchPut' db (docName n) [] $ doc n) [1..20])
-    (tearDB db) $ runCouch (conn db) $ do
+    (tearDB db) $ runCouch conn $ do
         res <- couchView' db "mydesign" "myview" [] $
             (rowValue =$= CCG.toType) =$ CL.consume
         liftIO $ res @=? [ReducedView 210]

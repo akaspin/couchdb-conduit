@@ -23,7 +23,6 @@ module Database.CouchDB.Conduit (
     couchHost,
     couchPort,
     couchManager,
-    couchDB,
     couchLogin,
     couchPass,
     

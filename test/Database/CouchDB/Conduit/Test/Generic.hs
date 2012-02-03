@@ -32,7 +32,7 @@ data TestDoc = TestDoc { kind :: String, intV :: Int, strV :: String }
 case_justPutGet :: Assertion
 case_justPutGet = bracket_
     setup teardown $ 
-    runCouch (conn dbName) $ do
+    runCouch conn $ do
         rev <- couchPut dbName "doc-just" "" [] $ TestDoc "doc" 1 "1"
         rev' <- couchPut dbName "doc-just" rev [] $ TestDoc "doc" 2 "2"
         rev'' <- couchRev dbName "doc-just"
@@ -42,7 +42,7 @@ case_justPutGet = bracket_
 case_massFlow :: Assertion
 case_massFlow = bracket_
     setup teardown $ 
-    runCouch (conn dbName) $ do
+    runCouch conn $ do
         revs <- mapM (\n -> 
                 couchPut dbName (docn n) "" [] $ TestDoc "doc" n $ show n
             ) [1..100]
@@ -59,7 +59,7 @@ case_massFlow = bracket_
 case_massIter :: Assertion
 case_massIter = bracket_
     setup teardown $ 
-    runCouch (conn dbName) $ 
+    runCouch conn $ 
         mapM_ (\n -> do
             let name = docn n 
             let d = TestDoc "doc" n $ show n

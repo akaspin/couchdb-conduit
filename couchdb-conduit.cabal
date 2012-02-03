@@ -2,7 +2,7 @@ name:           couchdb-conduit
 version:        0.5.0
 cabal-version:  >= 1.8
 build-type:     Simple
-stability:      Experimental
+stability:      Stable
 category:       Database, Conduit
 license:        BSD3
 license-file:   LICENSE
@@ -57,7 +57,8 @@ library
                     Database.CouchDB.Conduit.Internal.Doc,
                     Database.CouchDB.Conduit.Internal.Parser,
                     Database.CouchDB.Conduit.Internal.View,
-                    Database.CouchDB.Conduit.Internal.Connection
+                    Database.CouchDB.Conduit.Internal.Connection,
+                    Database.CouchDB.Conduit.Implicit
 
 test-suite test
   type:            exitcode-stdio-1.0

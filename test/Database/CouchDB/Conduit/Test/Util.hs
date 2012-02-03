@@ -10,14 +10,13 @@ import Database.CouchDB.Conduit.DB
 import CouchDBAuth
 
 setupDB :: ByteString -> IO ()
-setupDB n = runCouch (conn n) $ couchPutDB_ n
+setupDB n = runCouch conn $ couchPutDB_ n
 
 tearDB :: ByteString -> IO ()
-tearDB n = runCouch (conn n) $ couchDeleteDB n
+tearDB n = runCouch conn $ couchDeleteDB n
 
 -- | Connection connection. See readme
-conn :: Path -> CouchConnection
-conn db = def {
-    couchDB = db, 
+conn :: CouchConnection
+conn = def {
     couchLogin = login,
     couchPass = pass}

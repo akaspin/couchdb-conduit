@@ -48,22 +48,24 @@ module Database.CouchDB.Conduit.Generic (
     toType
 ) where
 
-import              Data.Generics (Data)
+import Data.Generics (Data)
 import qualified    Data.Aeson as A
 import qualified    Data.Aeson.Generic as AG
-import              Data.Conduit (ResourceT, Conduit(..), ResourceIO)
+import Data.Conduit (ResourceT, Conduit(..), ResourceIO)
 
-import qualified    Network.HTTP.Types as HT
+import Network.HTTP.Types (Query)
 
-import              Database.CouchDB.Conduit.Internal.Connection
-import              Database.CouchDB.Conduit.Internal.Doc
-import              Database.CouchDB.Conduit.Internal.View
+import Database.CouchDB.Conduit.Internal.Connection 
+            (MonadCouch(..), Path, mkPath, Revision)
+import Database.CouchDB.Conduit.Internal.Doc 
+            (couchGetWith, couchPutWith, couchPutWith_, couchPutWith')
+import Database.CouchDB.Conduit.Internal.View (toTypeWith)
 
 -- | Load a single object from couch DB.
 couchGet :: (MonadCouch m, Data a) => 
        Path         -- ^ Database
     -> Path         -- ^ Document path
-    -> HT.Query     -- ^ Query
+    -> Query     -- ^ Query
     -> ResourceT m (Revision, a)
 couchGet db p = couchGetWith AG.fromJSON (mkPath [db, p])  
 
@@ -71,9 +73,9 @@ couchGet db p = couchGetWith AG.fromJSON (mkPath [db, p])
 couchPut :: (MonadCouch m, Data a) => 
        Path         -- ^ Database
     -> Path         -- ^ Document path
-    -> Revision    -- ^ Document revision. For new docs provide empty string.
-    -> HT.Query    -- ^ Query arguments.
-    -> a           -- ^ The object to store.
+    -> Revision     -- ^ Document revision. For new docs provide empty string.
+    -> Query        -- ^ Query arguments.
+    -> a            -- ^ The object to store.
     -> ResourceT m Revision      
 couchPut db p = couchPutWith AG.encode (mkPath [db, p])
     
@@ -82,7 +84,7 @@ couchPut db p = couchPutWith AG.encode (mkPath [db, p])
 couchPut_ :: (MonadCouch m, Data a) => 
        Path         -- ^ Database
     -> Path         -- ^ Document path
-    -> HT.Query    -- ^ Query arguments.
+    -> Query    -- ^ Query arguments.
     -> a           -- ^ The object to store.
     -> ResourceT m Revision      
 couchPut_ db p = couchPutWith_ AG.encode (mkPath [db, p])
@@ -92,7 +94,7 @@ couchPut_ db p = couchPutWith_ AG.encode (mkPath [db, p])
 couchPut' :: (MonadCouch m, Data a) => 
        Path         -- ^ Database
     -> Path         -- ^ Document path
-    -> HT.Query    -- ^ Query arguments.
+    -> Query    -- ^ Query arguments.
     -> a           -- ^ The object to store.
     -> ResourceT m Revision      
 couchPut' db p = couchPutWith' AG.encode (mkPath [db, p])
