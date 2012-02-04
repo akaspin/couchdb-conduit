@@ -24,7 +24,10 @@ import qualified    Data.HashMap.Lazy as M
 import qualified    Data.Aeson as A
 import              Data.Attoparsec
 
-import              Data.Conduit
+import              Data.Conduit (ResourceIO, ResourceT, 
+                        Source, Conduit, Sink, ($$), ($=), 
+                        sequenceSink, SequencedSinkResponse(..),
+                        resourceThrow )
 import qualified    Data.Conduit.List as CL
 import qualified    Data.Conduit.Attoparsec as CA
 
@@ -53,7 +56,7 @@ import              Database.CouchDB.Conduit.LowLevel (couch, protect')
 
 -- | Run CouchDB view in manner like 'H.http'.
 --
--- > runCouch def {couchDB="mydb"} $ do
+-- > runCouch def $ do
 -- >
 -- >     -- Print all upon receipt.
 -- >     src <- couchView "mydb" "mydesign" "myview" [] 
@@ -77,13 +80,14 @@ couchView db designDocName viewName q = do
 
 -- | Brain-free version of 'couchView'. Takes 'Sink' to consume response.
 --
--- > runCouch def {couchDB="mydb"} $ do
+-- > runCouch def $ do
 -- >
 -- >     -- Print all upon receipt.
--- >     couchView' "mydesign" "myview" [] $ CL.mapM_ (liftIO . print)
+-- >     couchView' "mydb" "mydesign" "myview" [] $ CL.mapM_ (liftIO . print)
 -- >
 -- >     -- ... Or extract row value and consume
--- >     res <- couchView' "mydesign" "myview" [] $ rowValue =$ CL.consume
+-- >     res <- couchView' "mydb" "mydesign" "myview" [] $ 
+-- >                        rowValue =$ CL.consume
 couchView' :: MonadCouch m =>
        Path                 -- ^ Database
     -> Path                 -- ^ Design document
