@@ -72,7 +72,8 @@ couchView :: MonadCouch m =>
     -> HT.Query             -- ^ Query parameters
     -> ResourceT m (Source m A.Object)
 couchView db designDocName viewName q = do
-    H.Response _ _ bsrc <- couch HT.methodGet fullPath [] q 
+    H.Response _ _ bsrc <- couch HT.methodGet fullPath [] 
+        (("update_seq", Just "false"):q) 
         (H.RequestBodyBS B.empty) protect'
     return $ bsrc $= conduitCouchView
   where
@@ -153,4 +154,9 @@ viewStart = do
     _ <- option "" $ string ","
     _ <- string "\"rows\":["
     (string "]}" >> return False) <|> return True
+    
+    
+    
+    
+    
     

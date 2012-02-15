@@ -31,9 +31,9 @@ import Database.CouchDB.Conduit.Design
 
 tests :: Test
 tests = mutuallyExclusive $ testGroup "View" [
-    testCase "Create" case_createView,
-    testCase "Big values parsing" case_bigValues,
-    testCase "View with reduce" case_withReduce
+    testCase "Create" caseCreateView,
+    testCase "Big values parsing" caseBigValues,
+    testCase "View with reduce" caseWithReduce
     ]
 
 data T = T {
@@ -49,8 +49,8 @@ instance A.FromJSON T where
 instance A.ToJSON T where
    toJSON (T k i s) = A.object ["kind" .= k, "intV" .= i, "strV" .= s]
 
-case_createView :: Assertion
-case_createView = bracket_
+caseCreateView :: Assertion
+caseCreateView = bracket_
     (setupDB db)
     (tearDB db) $ runCouch conn $ do
         rev <- couchPutView' db "mydesign" "myview"
@@ -60,8 +60,8 @@ case_createView = bracket_
   where 
     db = "cdbc_test_view_create"
 
-case_bigValues :: Assertion
-case_bigValues = bracket_
+caseBigValues :: Assertion
+caseBigValues = bracket_
     (runCouch conn $ do
         couchPutDB_ db
         _ <- couchPutView' db "mydesign" "myview"
@@ -78,8 +78,8 @@ case_bigValues = bracket_
 
 data ReducedView = ReducedView Int deriving (Show, Eq, Data, Typeable)
 
-case_withReduce :: Assertion    
-case_withReduce = bracket_
+caseWithReduce :: Assertion    
+caseWithReduce = bracket_
     (runCouch conn $ do
         couchPutDB_ db
         _ <- couchPutView' db "mydesign" "myview"
