@@ -72,8 +72,7 @@ couchView :: MonadCouch m =>
     -> HT.Query             -- ^ Query parameters
     -> ResourceT m (Source m A.Object)
 couchView db designDocName viewName q = do
-    H.Response _ _ bsrc <- couch HT.methodGet fullPath [] 
-        (("update_seq", Just "false"):q) 
+    H.Response _ _ bsrc <- couch HT.methodGet fullPath [] q 
         (H.RequestBodyBS B.empty) protect'
     return $ bsrc $= conduitCouchView
   where
@@ -149,12 +148,20 @@ viewStart = do
     _ <- string "{" 
     _ <- option "" $ string "\"total_rows\":" 
     option () $ skipWhile (\x -> x >= 48 && x <= 57)
+    _ <- option "" $ string ",\"update_seq\":" 
+    option () $ skipWhile (\x -> x >= 48 && x <= 57)
     _ <- option "" $ string ",\"offset\":"
     option () $ skipWhile (\x -> x >= 48 && x <= 57)
     _ <- option "" $ string ","
     _ <- string "\"rows\":["
-    (string "]}" >> return False) <|> return True
-    
+    (string "]}" <|> (do
+        r <- string "]"
+        _ <- option "" $ string ",\"update_seq\":"
+        option () $ skipWhile (\x -> x >= 48 && x <= 57)
+        _ <- option "" $ string "}"
+        return r) 
+        >> return False) <|> return True
+
     
     
     

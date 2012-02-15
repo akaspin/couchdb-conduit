@@ -33,7 +33,9 @@ tests :: Test
 tests = mutuallyExclusive $ testGroup "View" [
     testCase "Create" caseCreateView,
     testCase "Big values parsing" caseBigValues,
-    testCase "View with reduce" caseWithReduce
+    testCase "With reduce" caseWithReduce,
+    testCase "update_seq before rows" caseUpdateSeqTop,
+    testCase "update_seq after rows" caseUpdateSeqAfter
     ]
 
 data T = T {
@@ -93,6 +95,43 @@ caseWithReduce = bracket_
   where
     db = "cdbc_test_view_reduce"
     doc n = T "doc" n $ show n
-    
+
+caseUpdateSeqTop :: Assertion
+caseUpdateSeqTop = bracket_
+    (runCouch conn $ do
+        couchPutDB_ db
+        _ <- couchPutView' db "mydesign" "myview"
+                "function(doc){emit(doc.intV, doc.intV);}" Nothing
+        mapM_ (\n -> CCG.couchPut' db (docName n) [] $ doc n) [1..20])
+    (tearDB db) $ runCouch conn $ do
+        res <- couchView' db "mydesign" "myview" 
+            [("update_seq",Just "true"),("key",Just "1")] $
+            (rowValue =$= CCG.toType) =$ CL.consume
+        liftIO $ res @=? [ReducedView 1]
+  where
+    db = "cdbc_test_view_before"
+    doc n = T "doc" n $ show n
+
+caseUpdateSeqAfter :: Assertion
+caseUpdateSeqAfter = bracket_
+    (runCouch conn $ do
+        couchPutDB_ db
+        _ <- couchPutView' db "mydesign" "myview"
+                "function(doc){emit([doc.intV,doc.intV], doc.intV);}" Nothing
+        mapM_ (\n -> CCG.couchPut' db (docName n) [] $ doc n) [1..20])
+    (tearDB db) $ runCouch conn $ do
+        res <- couchView' db "mydesign" "myview" 
+            [("keys",Just "[[0,0]]")] $
+            (rowValue =$= CCG.toType) =$ CL.consume
+        liftIO $ res @=? ([] :: [ReducedView])
+        res' <- couchView' db "mydesign" "myview" 
+            [] $
+            (rowValue) =$ CL.consume
+        liftIO $ print (res')
+        
+  where
+    db = "cdbc_test_view_after"
+    doc n = T "doc" n $ show n
+  
 docName :: Int -> B.ByteString
 docName n = fromString $ "doc" ++ show n    
