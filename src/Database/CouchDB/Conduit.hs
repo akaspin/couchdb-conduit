@@ -43,13 +43,10 @@ module Database.CouchDB.Conduit (
     --   * "Database.CouchDB.Conduit.Generic" Generic JSON methods
     couchRev, 
     couchRev',
-    couchDelete,
+    couchDelete
     
-    -- * Utility
-    quoteQueryParam
 ) where
 
-import Data.ByteString (ByteString, append)
 import Data.Conduit (ResourceT)
 import Database.CouchDB.Conduit.Internal.Connection
 import qualified Database.CouchDB.Conduit.Internal.Doc as D
@@ -76,7 +73,3 @@ couchDelete :: MonadCouch m =>
     -> Revision             -- ^ Revision
     -> ResourceT m ()
 couchDelete db p = D.couchDelete (mkPath [db, p]) 
-
--- | Simple query param quotation.
-quoteQueryParam :: ByteString -> ByteString
-quoteQueryParam a = "\"" `append` a `append` "\""

@@ -7,7 +7,7 @@ module Database.CouchDB.Conduit.Test.View where
 import Test.Framework (testGroup, mutuallyExclusive, Test)
 import Test.Framework.Providers.HUnit (testCase)
 import Test.HUnit (Assertion, (@=?))
-import Database.CouchDB.Conduit.Test.Util (setupDB, tearDB, conn)
+import Database.CouchDB.Conduit.Test.Util (tearDB, conn)
 
 --import Control.Monad.Trans.Class (lift)
 import Control.Exception.Lifted (bracket_)
@@ -31,7 +31,7 @@ import Database.CouchDB.Conduit.Design
 
 tests :: Test
 tests = mutuallyExclusive $ testGroup "View" [
-    testCase "Create" caseCreateView,
+    testCase "Params" caseMakeParams,
     testCase "Big values parsing" caseBigValues,
     testCase "With reduce" caseWithReduce,
     testCase "update_seq before rows" caseUpdateSeqTop,
@@ -51,22 +51,18 @@ instance A.FromJSON T where
 instance A.ToJSON T where
    toJSON (T k i s) = A.object ["kind" .= k, "intV" .= i, "strV" .= s]
 
-caseCreateView :: Assertion
-caseCreateView = bracket_
-    (setupDB db)
-    (tearDB db) $ runCouch conn $ do
-        rev <- couchPutView' db "mydesign" "myview"
-            "function(doc){emit(null, doc);}" Nothing
-        rev' <- couchRev db "_design/mydesign"
-        liftIO $ rev @=? rev' 
-  where 
-    db = "cdbc_test_view_create"
+caseMakeParams :: Assertion
+caseMakeParams = do
+    let numP = mkParam (1 :: Int)
+    let bsP = mkParam ("a" :: B.ByteString)
+    let arrP = mkParam (["a", "b", "c"] :: [B.ByteString])
+    liftIO $ ("1","\"a\"","[\"a\",\"b\",\"c\"]") @=? (numP, bsP, arrP)
 
 caseBigValues :: Assertion
 caseBigValues = bracket_
     (runCouch conn $ do
         couchPutDB_ db
-        _ <- couchPutView' db "mydesign" "myview"
+        couchPutView db "mydesign" "myview"
                 "function(doc){emit(doc.intV, doc);}" Nothing
         mapM_ (\n -> CCG.couchPut' db (docName n) [] $ doc n) [1..20]
     )
@@ -84,7 +80,7 @@ caseWithReduce :: Assertion
 caseWithReduce = bracket_
     (runCouch conn $ do
         couchPutDB_ db
-        _ <- couchPutView' db "mydesign" "myview"
+        couchPutView db "mydesign" "myview"
                 "function(doc){emit(doc.intV, doc.intV);}" 
                 $ Just "function(keys, values){return sum(values);}"
         mapM_ (\n -> CCG.couchPut' db (docName n) [] $ doc n) [1..20])
@@ -100,7 +96,7 @@ caseUpdateSeqTop :: Assertion
 caseUpdateSeqTop = bracket_
     (runCouch conn $ do
         couchPutDB_ db
-        _ <- couchPutView' db "mydesign" "myview"
+        couchPutView db "mydesign" "myview"
                 "function(doc){emit(doc.intV, doc.intV);}" Nothing
         mapM_ (\n -> CCG.couchPut' db (docName n) [] $ doc n) [1..20])
     (tearDB db) $ runCouch conn $ do
@@ -116,7 +112,7 @@ caseUpdateSeqAfter :: Assertion
 caseUpdateSeqAfter = bracket_
     (runCouch conn $ do
         couchPutDB_ db
-        _ <- couchPutView' db "mydesign" "myview"
+        couchPutView db "mydesign" "myview"
                 "function(doc){emit([doc.intV,doc.intV], doc.intV);}" Nothing
         mapM_ (\n -> CCG.couchPut' db (docName n) [] $ doc n) [1..20])
     (tearDB db) $ runCouch conn $ do
@@ -124,10 +120,7 @@ caseUpdateSeqAfter = bracket_
             [("keys",Just "[[0,0]]")] $
             (rowValue =$= CCG.toType) =$ CL.consume
         liftIO $ res @=? ([] :: [ReducedView])
-        res' <- couchView' db "mydesign" "myview" 
-            [] $
-            (rowValue) =$ CL.consume
-        liftIO $ print (res')
+        
         
   where
     db = "cdbc_test_view_after"

@@ -4,66 +4,38 @@
 --   convenient for bootstrapping and testing.
 
 module Database.CouchDB.Conduit.Design (
-    couchPutView_,
-    couchPutView'
+    couchPutView
 ) where
 
 import              Prelude hiding (catch)
-import              Control.Exception.Lifted (catch)
+import Control.Monad (void)
+import Control.Exception.Lifted (catch)
 
-import              Data.Conduit (ResourceT)
+import Data.Conduit (ResourceT)
 
-import qualified    Data.ByteString as B
-import qualified    Data.Text as T
-import qualified    Data.Text.Encoding as TE
-import qualified    Data.HashMap.Lazy as M
-import qualified    Data.Aeson as A
-import qualified    Data.Aeson.Types as AT
+import qualified Data.ByteString as B
+import qualified Data.Text as T
+import qualified Data.Text.Encoding as TE
+import qualified Data.HashMap.Lazy as M
+import qualified Data.Aeson as A
+import qualified Data.Aeson.Types as AT
 
 import Database.CouchDB.Conduit.Internal.Connection 
         (MonadCouch, CouchError, Path, mkPath, Revision)
-import Database.CouchDB.Conduit.Internal.Doc (couchGetWith, 
-            couchPutWith_, couchPutWith')
+import Database.CouchDB.Conduit.Internal.Doc (couchGetWith, couchPutWith')
 
--- | Put view in design document if it not exists. If design document does 
---   not exist, it will be created. 
-couchPutView_ :: MonadCouch m =>
+-- | Put view to design document. If design document does not exist, 
+--   it will be created. 
+couchPutView :: MonadCouch m =>
        Path                 -- ^ Database
     -> Path                 -- ^ Design document
     -> Path                 -- ^ View name
     -> B.ByteString         -- ^ Map function
     -> Maybe B.ByteString   -- ^ Reduce function
-    -> ResourceT m Revision
-couchPutView_ = couchViewPutInt True
-
--- | Brute-force version of 'couchViewPut''. Put view in design document. 
---   If design document does not exist, it will be created. 
-couchPutView' :: MonadCouch m =>
-       Path                 -- ^ Database
-    -> Path                 -- ^ Design document
-    -> Path                 -- ^ View name
-    -> B.ByteString         -- ^ Map function
-    -> Maybe B.ByteString   -- ^ Reduce function
-    -> ResourceT m Revision
-couchPutView' = couchViewPutInt False
-
------------------------------------------------------------------------------
--- Internal
------------------------------------------------------------------------------
-
-couchViewPutInt :: MonadCouch m =>
-       Bool                 -- ^ Care flag
-    -> Path                 -- ^ Database
-    -> Path                 -- ^ Design document
-    -> Path                 -- ^ View name
-    -> B.ByteString         -- ^ Map function
-    -> Maybe B.ByteString   -- ^ Reduce function
-    -> ResourceT m Revision
-couchViewPutInt prot db designName viewName mapF reduceF = do
-    -- Get design or empty object
+    -> ResourceT m ()
+couchPutView db designName viewName mapF reduceF = do
     (_, A.Object d) <- getDesignDoc path
-    if prot then couchPutWith_ A.encode path [] $ inferViews (purge_ d)
-            else couchPutWith' A.encode path [] $ inferViews (purge_ d)
+    void $ couchPutWith' A.encode path [] $ inferViews (purge_ d)
   where
     path = designDocPath db designName
     inferViews d = A.Object $ M.insert "views" (addView d) d
@@ -74,6 +46,10 @@ couchViewPutInt prot db designName viewName mapF reduceF = do
     constructView :: B.ByteString -> Maybe B.ByteString -> A.Value
     constructView m (Just r) = A.object ["map" A..= m, "reduce" A..= r]
     constructView m Nothing = A.object ["map" A..= m]
+
+-----------------------------------------------------------------------------
+-- Internal
+-----------------------------------------------------------------------------
 
 getDesignDoc :: MonadCouch m => 
        Path 

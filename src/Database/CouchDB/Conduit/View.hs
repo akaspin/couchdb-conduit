@@ -6,36 +6,66 @@
 --   "Database.CouchDB.Conduit.Design"
 
 module Database.CouchDB.Conduit.View 
-(
+(   
     -- * Acccessing views #run#
     -- $run
     couchView,
     couchView',
-    rowValue
+    couchViewPost,
+    couchViewPost',
+    rowValue,
+
+    -- * View query parameters
+    -- $view_query #view_query#
+    mkParam 
 )
  where
 
-import              Control.Monad.Trans.Class (lift)
-import              Control.Applicative ((<|>))
+import Control.Monad.Trans.Class (lift)
+import Control.Applicative ((<|>))
 
-import qualified    Data.ByteString as B
-import qualified    Data.ByteString.Char8 as BC8
-import qualified    Data.HashMap.Lazy as M
-import qualified    Data.Aeson as A
-import              Data.Attoparsec
+import Data.Monoid (mconcat)
+import qualified Data.ByteString as B
+import qualified Data.ByteString.Lazy as BL
+import qualified Data.ByteString.Char8 as BC8
+import qualified Data.HashMap.Lazy as M
+import qualified Data.Aeson as A
+import Data.Attoparsec
 
-import              Data.Conduit (ResourceIO, ResourceT, 
+import Data.Conduit (ResourceIO, ResourceT, 
                         Source, Conduit, Sink, ($$), ($=), 
                         sequenceSink, SequencedSinkResponse(..),
                         resourceThrow )
-import qualified    Data.Conduit.List as CL
-import qualified    Data.Conduit.Attoparsec as CA
+import qualified Data.Conduit.List as CL
+import qualified Data.Conduit.Attoparsec as CA
 
-import qualified    Network.HTTP.Conduit as H
-import qualified    Network.HTTP.Types as HT
+import qualified Network.HTTP.Conduit as H
+import qualified Network.HTTP.Types as HT
 
-import              Database.CouchDB.Conduit.Internal.Connection
-import              Database.CouchDB.Conduit.LowLevel (couch, protect')
+import Database.CouchDB.Conduit.Internal.Connection
+import Database.CouchDB.Conduit.LowLevel (couch, protect')
+
+-----------------------------------------------------------------------------
+-- View query parameters
+-----------------------------------------------------------------------------
+
+-- $view_query
+-- For details see 
+-- <http://wiki.apache.org/couchdb/HTTP_view_API#Querying_Options>. Note, 
+-- because all options must be a proper URL encoded JSON, construction of 
+-- complex parameters can be very tedious. To simplify this, use 'mkParam'. 
+
+-- | Encode query parameter to 'B.ByteString'.  
+--
+-- > mkParam (["a", "b"] :: [String])
+-- > "[\"a\",\"b\"]"
+--
+-- It't just convert lazy 'BL.ByteString' from 'A.encode' to strict 
+-- 'B.ByteString'
+mkParam :: A.ToJSON a =>
+       a                -- ^ Parameter
+    -> B.ByteString
+mkParam = mconcat . BL.toChunks . A.encode
 
 -----------------------------------------------------------------------------
 -- Running
@@ -71,12 +101,12 @@ couchView :: MonadCouch m =>
     -> Path                 -- ^ View name
     -> HT.Query             -- ^ Query parameters
     -> ResourceT m (Source m A.Object)
-couchView db designDocName viewName q = do
-    H.Response _ _ bsrc <- couch HT.methodGet fullPath [] q 
-        (H.RequestBodyBS B.empty) protect'
+couchView db design view q = do
+    H.Response _ _ bsrc <- couch HT.methodGet 
+            (viewPath db design view)
+            [] q 
+            (H.RequestBodyBS B.empty) protect'
     return $ bsrc $= conduitCouchView
-  where
-    fullPath = mkPath [db, "_design", designDocName, "_view", viewName]
 
 -- | Brain-free version of 'couchView'. Takes 'Sink' to consume response.
 --
@@ -95,12 +125,48 @@ couchView' :: MonadCouch m =>
     -> HT.Query             -- ^ Query parameters
     -> Sink A.Object m a    -- ^ Sink for handle view rows.
     -> ResourceT m a
-couchView' db designDocName viewName q sink = do
-    H.Response _ _ bsrc <- couch HT.methodGet fullPath [] q 
-        (H.RequestBodyBS B.empty) protect'
-    bsrc $= conduitCouchView $$ sink
+couchView' db design view q sink = do
+    raw <- couchView db design view q
+    raw $$ sink
+
+-- | Run CouchDB view in manner like 'H.http' using @POST@ (since CouchDB 0.9).
+--   It's convenient in case that @keys@ paremeter too big for @GET@ query 
+--   string. Other query parameters used as usual.
+-- 
+-- > runCouch def $ do
+-- >     src <- couchViewPost "mydb" "mydesign" "myview" 
+-- >             [("group", Just "true")]
+-- >             ["key1", "key2", "key3"] 
+-- >     src $$ CL.mapM_ (liftIO . print)
+couchViewPost :: (MonadCouch m, A.ToJSON a) =>
+       Path                 -- ^ Database
+    -> Path                 -- ^ Design document
+    -> Path                 -- ^ View name
+    -> HT.Query             -- ^ Query parameters
+    -> a                    -- ^ View @keys@. Must be list or cortege.
+    -> ResourceT m (Source m A.Object)    
+couchViewPost db design view q ks = do
+    H.Response _ _ bsrc <- couch HT.methodPost 
+            (viewPath db design view)  
+            [] 
+            q 
+            (H.RequestBodyLBS mkPost) protect'
+    return $ bsrc $= conduitCouchView
   where
-    fullPath = mkPath [db, "_design", designDocName, "_view", viewName]
+    mkPost = A.encode $ A.object ["keys" A..= ks]
+
+-- | Brain-free version of 'couchViewPost'. Takes 'Sink' to consume response.
+couchViewPost' :: (MonadCouch m, A.ToJSON a) =>
+       Path                 -- ^ Database
+    -> Path                 -- ^ Design document
+    -> Path                 -- ^ View name
+    -> HT.Query             -- ^ Query parameters
+    -> a                    -- ^ View @keys@. Must be list or cortege.
+    -> Sink A.Object m a    -- ^ Sink for handle view rows.
+    -> ResourceT m a
+couchViewPost' db design view q ks sink = do
+    raw <- couchViewPost db design view q ks
+    raw $$ sink
 
 -- | Conduit for extract \"value\" field from CouchDB view row.
 rowValue :: ResourceIO m => Conduit A.Object m A.Value
@@ -110,7 +176,15 @@ rowValue = CL.mapM (\v -> case M.lookup "value" v of
                     ("View row does not contain value: " ++ show v))
 
 -----------------------------------------------------------------------------
--- Internal Parser conduit
+-- Internal
+-----------------------------------------------------------------------------
+
+-- | Make full view path
+viewPath :: Path -> Path -> Path -> Path
+viewPath db design view = mkPath [db, "_design", design, "_view", view]
+
+-----------------------------------------------------------------------------
+-- Internal view parser
 -----------------------------------------------------------------------------
 
 conduitCouchView :: ResourceIO m => Conduit B.ByteString m A.Object
