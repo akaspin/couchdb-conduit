@@ -19,4 +19,5 @@ tearDB n = runCouch conn $ couchDeleteDB n
 conn :: CouchConnection
 conn = def {
     couchLogin = login,
-    couchPass = pass}
+    couchPass = pass,
+    couchPrefix = "cct__"}

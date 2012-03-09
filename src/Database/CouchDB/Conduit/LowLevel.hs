@@ -33,6 +33,8 @@ import qualified    Network.HTTP.Types as HT
 
 import              Database.CouchDB.Conduit.Internal.Connection
 
+import Control.Monad.IO.Class (liftIO)
+
 -- | CouchDB response
 type CouchResponse m = H.Response (Source m B.ByteString)
 
@@ -60,6 +62,7 @@ couch meth path hdrs qs reqBody protectFn = do
             , H.queryString     = HT.renderQuery False qs
             , H.requestBody     = reqBody
             , H.checkStatus = const . const $ Nothing }
+    liftIO $ print $ withPrefix $ couchPrefix conn
     -- Apply auth if needed
     let req' = if couchLogin conn == B.empty then req else H.applyBasicAuth 
             (couchLogin conn) (couchPass conn) req
@@ -68,7 +71,7 @@ couch meth path hdrs qs reqBody protectFn = do
   where
     withPrefix prx 
         | B.null prx = path
-        | otherwise = prx `B.append` path 
+        | otherwise = "/" `B.append` prx `B.append` B.tail path 
 
 -- | Protect 'H.Response' from bad status codes. If status code in list 
 --   of status codes - just return response. Otherwise - throw 'CouchError'.

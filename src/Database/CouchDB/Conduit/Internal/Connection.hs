@@ -71,7 +71,7 @@ type Revision = B.ByteString
 -- | Make correct path and escape fragments. Filter empty fragments.
 --
 -- > mkPath ["db", "", "doc/with/slashes"]
--- > db/doc%2Fwith%2Fslashes
+-- > /db/doc%2Fwith%2Fslashes
 mkPath :: [Path]    -- ^ Path fragments be escaped.  
        -> Path
 mkPath = BLB.toByteString . HT.encodePathSegments . 
