@@ -56,7 +56,7 @@ couch meth path hdrs qs reqBody protectFn = do
             , H.host            = couchHost conn
             , H.requestHeaders  = hdrs
             , H.port            = couchPort conn
-            , H.path            = path
+            , H.path            = withPrefix $ couchPrefix conn
             , H.queryString     = HT.renderQuery False qs
             , H.requestBody     = reqBody
             , H.checkStatus = const . const $ Nothing }
@@ -65,6 +65,10 @@ couch meth path hdrs qs reqBody protectFn = do
             (couchLogin conn) (couchPass conn) req
     res <- H.http req' (fromJust $ couchManager conn)
     protectFn res
+  where
+    withPrefix prx 
+        | B.null prx = path
+        | otherwise = prx `B.append` path 
 
 -- | Protect 'H.Response' from bad status codes. If status code in list 
 --   of status codes - just return response. Otherwise - throw 'CouchError'.

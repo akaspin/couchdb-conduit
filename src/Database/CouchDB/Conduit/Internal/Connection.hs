@@ -19,6 +19,7 @@ module Database.CouchDB.Conduit.Internal.Connection (
     couchManager,
     couchLogin,
     couchPass,
+    couchPrefix,
     
     -- * Runtime enviroment and errors #runtime#
     MonadCouch (..),
@@ -96,10 +97,13 @@ data CouchConnection = CouchConnection {
         -- ^ CouchDB login. By default is 'B.empty'.
     , couchPass :: B.ByteString
         -- ^ CouchDB password. By default is 'B.empty'.
+    , couchPrefix :: B.ByteString
+        -- ^ CouchDB database prefix. It will prepended to DB pathes.
+        --   Must be fully valid DB name fragment.
 }
 
 instance Default CouchConnection where
-    def = CouchConnection "localhost" 5984 Nothing B.empty B.empty
+    def = CouchConnection "localhost" 5984 Nothing B.empty B.empty B.empty
 
 -----------------------------------------------------------------------------
 -- Runtime
@@ -155,7 +159,7 @@ withCouchConnection :: ResourceIO m =>
        CouchConnection              -- ^ Couch connection
     -> (CouchConnection -> m a)     -- ^ Function to run
     -> m a
-withCouchConnection c@(CouchConnection _ _ mayMan  _ _) f = 
+withCouchConnection c@(CouchConnection _ _ mayMan  _ _ _) f = 
     case mayMan of
         -- Allocate manager with helper
         Nothing -> H.withManager $ \m -> lift $ f $ c {couchManager = Just m}
