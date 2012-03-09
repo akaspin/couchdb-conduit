@@ -27,6 +27,7 @@ module Database.CouchDB.Conduit (
     couchManager,
     couchLogin,
     couchPass,
+    couchPrefix,
     
     -- * Runtime enviroment and errors #runtime#
     MonadCouch (..),
