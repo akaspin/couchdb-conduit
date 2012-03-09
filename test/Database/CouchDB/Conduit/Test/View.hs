@@ -53,10 +53,14 @@ instance A.ToJSON T where
 
 caseMakeParams :: Assertion
 caseMakeParams = do
-    let numP = mkParam (1 :: Int)
-    let bsP = mkParam ("a" :: B.ByteString)
-    let arrP = mkParam (["a", "b", "c"] :: [B.ByteString])
-    liftIO $ ("1","\"a\"","[\"a\",\"b\",\"c\"]") @=? (numP, bsP, arrP)
+    let numP = viewQpInt "numP" 1
+    let bsP = viewQpBS "bsP" "a"
+    let arrP = viewQp "arrP" (["a", "b", "c"] :: [B.ByteString])
+    liftIO $ (
+            ("numP", Just "1"),
+            ("bsP", Just "\"a\""),
+            ("arrP", Just "[\"a\",\"b\",\"c\"]")) 
+            @=? (numP, bsP, arrP)
 
 caseBigValues :: Assertion
 caseBigValues = bracket_

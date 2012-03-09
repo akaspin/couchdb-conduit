@@ -17,7 +17,36 @@ module Database.CouchDB.Conduit.View
 
     -- * View query parameters
     -- $view_query #view_query#
-    mkParam 
+    viewQp,
+    viewQpBS,
+    viewQpInt,
+    viewQpTrue,
+    viewQpFalse,
+    
+    -- ** Rows
+    -- $view_query_rows #view_query_rows#
+    viewQpDescending,
+    viewQpLimit,
+    viewQpSkip,
+    viewQpStartId,
+    viewQpEndId,
+
+    -- ** Map/Reduce
+    -- $view_query_reduce #view_query_reduce#
+    viewQpGroup,
+    viewQpGroupLevel,
+    viewQpReduceOff,
+    viewQpReduceOn,
+    
+    -- ** Keys
+    -- $view_query_keys #view_query_keys#
+    viewQpKey,
+    viewQpKeys,
+
+    -- ** Control
+    -- $view_query_control #view_query_control#
+    viewQpIncludeDocs,
+    viewQpInclusiveEnd
 )
  where
 
@@ -27,7 +56,7 @@ import Control.Applicative ((<|>))
 import Data.Monoid (mconcat)
 import qualified Data.ByteString as B
 import qualified Data.ByteString.Lazy as BL
-import qualified Data.ByteString.Char8 as BC8
+import qualified Data.ByteString.Char8 as BS8
 import qualified Data.HashMap.Lazy as M
 import qualified Data.Aeson as A
 import Data.Attoparsec
@@ -53,19 +82,147 @@ import Database.CouchDB.Conduit.LowLevel (couch, protect')
 -- For details see 
 -- <http://wiki.apache.org/couchdb/HTTP_view_API#Querying_Options>. Note, 
 -- because all options must be a proper URL encoded JSON, construction of 
--- complex parameters can be very tedious. To simplify this, use 'mkParam'. 
+-- complex parameters can be very tedious. To simplify this, use following
+-- functions. 
 
--- | Encode query parameter to 'B.ByteString'.  
+-- | Make complex view query parameter.  
 --
--- > mkParam (["a", "b"] :: [String])
--- > "[\"a\",\"b\"]"
+-- > viewQP "key" (["a", "b"] :: [String])
+-- > ("key", Just "[\"a\",\"b\"]")
 --
 -- It't just convert lazy 'BL.ByteString' from 'A.encode' to strict 
--- 'B.ByteString'
-mkParam :: A.ToJSON a =>
-       a                -- ^ Parameter
-    -> B.ByteString
-mkParam = mconcat . BL.toChunks . A.encode
+-- 'B.ByteString'. For more efficient use specific functions. 
+viewQp :: A.ToJSON a =>
+       B.ByteString     -- ^ Query parameter name
+    -> a                -- ^ Parameter
+    -> HT.QueryItem
+viewQp n v = (n, Just $ mconcat . BL.toChunks . A.encode $ v)
+
+-- | Make quoted 'B.ByteString' query parameter.
+viewQpBS :: B.ByteString -> B.ByteString -> HT.QueryItem
+viewQpBS n v = (n, Just $ "\"" `B.append` v `B.append` "\"")
+
+-- | Make 'Int' query parameter.
+viewQpInt :: B.ByteString -> Int -> HT.QueryItem
+viewQpInt n v = (n, Just $ BS8.pack . show $ v)
+
+-- | Make @...=true@ query parameter.
+viewQpTrue :: B.ByteString -> HT.QueryItem
+viewQpTrue n = (n, Just "true")
+
+-- | Make @...=true@ query parameter.
+viewQpFalse :: B.ByteString -> HT.QueryItem
+viewQpFalse n = (n, Just "false")
+
+-- $view_query_rows
+-- Helpers for sorting and limiting rows. 
+
+-- $view_query_reduce
+-- Helpers for Map/Reduce. 
+
+-- $view_query_keys
+-- Helpers for quering by keys. 
+
+-- $view_query_control
+-- Helpers for view behaviour. 
+
+---------------------------
+-- Boolean query parameters
+---------------------------
+
+-- | Turn on descending sort of view results. 
+--   Shorthand for @viewQpTrue \"descending\"@.
+viewQpDescending :: HT.QueryItem
+viewQpDescending = viewQpTrue "descending"
+
+-- | Turn on grouping.
+--   Shorthand for @viewQpTrue \"group\"@.
+viewQpGroup :: HT.QueryItem
+viewQpGroup = viewQpTrue "group"
+
+-- | Turn on inclusion docs in view results.
+--   Shorthand for @viewQpTrue \"include_docs\"@.
+viewQpIncludeDocs :: HT.QueryItem
+viewQpIncludeDocs = viewQpTrue "include_docs"
+
+-- | Turn off inclusion @endkey@ in view results.
+--   Shorthand for @viewQpFalse \"inclusive_end\"@.
+viewQpInclusiveEnd :: HT.QueryItem
+viewQpInclusiveEnd = viewQpFalse "inclusive_end"
+
+-- | Force off reduce if a reduce function is defined.
+--   Shorthand for @viewQpFalse \"reduce\"@.
+viewQpReduceOff :: HT.QueryItem
+viewQpReduceOff = viewQpFalse "reduce"
+
+-- | Force on reduce if a reduce function is not defined.
+--   Shorthand for @viewQpTrue \"reduce\"@.
+viewQpReduceOn :: HT.QueryItem
+viewQpReduceOn = viewQpTrue "reduce"
+
+--------------
+-- Pure string
+--------------
+
+-- | Document id to start with.
+--   Shorthand for @viewQpBS \"startkey_docid\"@.
+viewQpStartId :: 
+       Path             -- ^ Document ID.
+    -> HT.QueryItem
+viewQpStartId = viewQpBS "startkey_docid"
+
+-- | Last document id to include in the output.
+--   Shorthand for @viewQpBS \"endkey_docid\"@.
+viewQpEndId :: 
+       Path             -- ^ Document ID.
+    -> HT.QueryItem
+viewQpEndId = viewQpBS "endkey_docid"
+
+--------------
+-- Numeric
+--------------
+
+-- | Limit view rows. 
+--   Shorthand for @viewQpInt \"limit\"@.
+viewQpLimit :: 
+       Int              -- ^ Max number of rows.
+    -> HT.QueryItem
+viewQpLimit = viewQpInt "limit"
+
+-- | Skip view rows. 
+--   Shorthand for @viewQpInt \"skip\"@.
+viewQpSkip :: 
+       Int              -- ^ Number of rows to skip. 
+    -> HT.QueryItem
+viewQpSkip = viewQpInt "skip"
+
+-- | Set grouping level. 
+--   Shorthand for @viewQpInt \"group_level\"@.
+viewQpGroupLevel :: 
+       Int          -- ^ Grouping level. 
+    -> HT.QueryItem
+viewQpGroupLevel = viewQpInt "group_level"
+
+--------------
+-- Complex
+--------------
+
+-- | Make @key=...@ query parameter.
+--   Shorthand for @viewQp \"key\"@.
+viewQpKey :: A.ToJSON a => 
+       a                -- ^ Key 
+    -> HT.QueryItem
+viewQpKey = viewQp "key"
+
+-- | Make @keys=...@ query parameter. 
+--   Shorthand for @viewQp \"keys\"@.
+--
+--   Use it only with 'couchView' and 'couchView''. For large sets of @keys@
+--   use 'couchViewPost' and 'couchViewPost''
+viewQpKeys :: A.ToJSON a => 
+       a                -- ^ Keys. Must be list or cortege. 
+    -> HT.QueryItem
+viewQpKeys = viewQp "keys"
 
 -----------------------------------------------------------------------------
 -- Running
@@ -172,7 +329,7 @@ couchViewPost' db design view q ks sink = do
 rowValue :: ResourceIO m => Conduit A.Object m A.Value
 rowValue = CL.mapM (\v -> case M.lookup "value" v of
             (Just o) -> return o
-            _ -> resourceThrow $ CouchInternalError $ BC8.pack
+            _ -> resourceThrow $ CouchInternalError $ BS8.pack
                     ("View row does not contain value: " ++ show v))
 
 -----------------------------------------------------------------------------
