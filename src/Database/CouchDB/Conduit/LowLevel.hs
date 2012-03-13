@@ -4,8 +4,14 @@
 -- | Low-level method and tools of accessing CouchDB.
 
 module Database.CouchDB.Conduit.LowLevel (
+    -- * Response
     CouchResponse,
+    
+    -- * Low-level access
     couch,
+    couch',
+    
+    -- * Response protection
     protect,
     protect'
 ) where
@@ -42,20 +48,40 @@ type CouchResponse m = H.Response (Source m B.ByteString)
 couch :: MonadCouch m =>
        HT.Method                -- ^ Method
     -> Path                     -- ^ Correct 'Path' with escaped fragments.
+                                --   'couchPrefix' will be prepended to path.
     -> HT.RequestHeaders        -- ^ Headers
     -> HT.Query                 -- ^ Query args
     -> H.RequestBody m          -- ^ Request body
     -> (CouchResponse m -> ResourceT m (CouchResponse m))
                                 -- ^ Protect function. See 'protect'
     -> ResourceT m (CouchResponse m)
-couch meth path hdrs qs reqBody protectFn = do
+couch meth path = 
+    couch' meth withPrefix
+  where
+    withPrefix prx 
+        | B.null prx = path
+        | otherwise = "/" <> prx <> B.tail path 
+
+-- | More generalized version of 'couch'. Instead 'Path' it takes function
+--   what takes prefix and returns a path.
+couch' :: MonadCouch m =>
+       HT.Method                -- ^ Method
+    -> (Path -> Path)           -- ^ 'couchPrefix'->Path function. Output must 
+                                --   be correct 'Path' with escaped fragments.
+    -> HT.RequestHeaders        -- ^ Headers
+    -> HT.Query                 -- ^ Query args
+    -> H.RequestBody m          -- ^ Request body
+    -> (CouchResponse m -> ResourceT m (CouchResponse m))
+                                -- ^ Protect function. See 'protect'
+    -> ResourceT m (CouchResponse m)
+couch' meth pathFn hdrs qs reqBody protectFn = do
     conn <- lift couchConnection
     let req = H.def 
             { H.method          = meth
             , H.host            = couchHost conn
             , H.requestHeaders  = hdrs
             , H.port            = couchPort conn
-            , H.path            = withPrefix $ couchPrefix conn
+            , H.path            = pathFn $ couchPrefix conn
             , H.queryString     = HT.renderQuery False qs
             , H.requestBody     = reqBody
             , H.checkStatus = const . const $ Nothing }
@@ -64,10 +90,6 @@ couch meth path hdrs qs reqBody protectFn = do
             (couchLogin conn) (couchPass conn) req
     res <- H.http req' (fromJust $ couchManager conn)
     protectFn res
-  where
-    withPrefix prx 
-        | B.null prx = path
-        | otherwise = "/" <> prx <> B.tail path 
 
 -- | Protect 'H.Response' from bad status codes. If status code in list 
 --   of status codes - just return response. Otherwise - throw 'CouchError'.

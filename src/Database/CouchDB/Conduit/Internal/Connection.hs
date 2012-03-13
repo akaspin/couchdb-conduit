@@ -75,7 +75,7 @@ mkPath :: [Path]    -- ^ Path fragments be escaped.
        -> Path
 mkPath = BLB.toByteString . HT.encodePathSegments . 
     map TE.decodeUtf8 . filter (/="")
-
+    
 -----------------------------------------------------------------------------
 -- Connection
 -----------------------------------------------------------------------------
@@ -97,8 +97,8 @@ data CouchConnection = CouchConnection {
     , couchPass :: B.ByteString
         -- ^ CouchDB password. By default is 'B.empty'.
     , couchPrefix :: B.ByteString
-        -- ^ CouchDB database prefix. It will prepended to DB pathes.
-        --   Must be fully valid DB name fragment.
+        -- ^ CouchDB database prefix. It will prepended to first fragment of
+        --   request path. Must be fully valid DB name fragment.
 }
 
 instance Default CouchConnection where

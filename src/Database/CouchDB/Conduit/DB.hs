@@ -30,7 +30,7 @@ import qualified Network.HTTP.Types as HT
 
 import Database.CouchDB.Conduit.Internal.Connection 
             (MonadCouch(..), Path, mkPath)
-import Database.CouchDB.Conduit.LowLevel (couch, protect, protect')
+import Database.CouchDB.Conduit.LowLevel (couch, couch', protect, protect')
 
 
 -- | Create CouchDB database. 
@@ -91,7 +91,7 @@ couchReplicateDB :: MonadCouch m =>
     -> Bool             -- ^ Cancel flag
     -> ResourceT m ()
 couchReplicateDB source target createTarget continuous cancel = 
-    void $ couch HT.methodPost "_replicate" [] []
+    void $ couch' HT.methodPost (const "/_replicate") [] []
             reqBody protect' 
   where
     reqBody = H.RequestBodyLBS $ A.encode $ A.object [
