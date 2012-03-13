@@ -11,27 +11,26 @@ module Database.CouchDB.Conduit.LowLevel (
 ) where
 
 import              Prelude hiding (catch)
-import              Control.Exception.Lifted (catch)
 
-import              Control.Exception (SomeException)
-import              Control.Monad.Trans.Class (lift)
-import              Control.Monad.Base (liftBase)
+import Control.Exception.Lifted (catch)
+import Control.Exception (SomeException)
+import Control.Monad.Trans.Class (lift)
+import Control.Monad.Base (liftBase)
 
-import              Data.Maybe (fromJust)
-import qualified    Data.ByteString as B
-import qualified    Data.ByteString.Char8 as BC8
-import qualified    Data.Aeson as A
-import qualified    Data.HashMap.Lazy as M
-import qualified    Data.Text as T
+import Data.Maybe (fromJust)
+import qualified Data.ByteString as B
+import qualified Data.Aeson as A
+import qualified Data.HashMap.Lazy as M
+import Data.String.Conversions ((<>), cs)
 
-import              Data.Conduit (ResourceT, Source, 
+import Data.Conduit (ResourceT, Source, 
                         ($$), resourceThrow)
-import              Data.Conduit.Attoparsec (sinkParser)
+import Data.Conduit.Attoparsec (sinkParser)
                         
-import qualified    Network.HTTP.Conduit as H
-import qualified    Network.HTTP.Types as HT
+import qualified Network.HTTP.Conduit as H
+import qualified Network.HTTP.Types as HT
 
-import              Database.CouchDB.Conduit.Internal.Connection
+import Database.CouchDB.Conduit.Internal.Connection
 
 -- | CouchDB response
 type CouchResponse m = H.Response (Source m B.ByteString)
@@ -68,7 +67,7 @@ couch meth path hdrs qs reqBody protectFn = do
   where
     withPrefix prx 
         | B.null prx = path
-        | otherwise = "/" `B.append` prx `B.append` B.tail path 
+        | otherwise = "/" <> prx <> B.tail path 
 
 -- | Protect 'H.Response' from bad status codes. If status code in list 
 --   of status codes - just return response. Otherwise - throw 'CouchError'.
@@ -90,9 +89,9 @@ protect goodCodes h ~resp@(H.Response (HT.Status sc sm) _ bsrc)
                    (\(_::SomeException) -> return A.Null)
         liftBase $ resourceThrow $ CouchHttpError sc $ msg v
         where 
-        msg v = sm `B.append` reason v
-        reason (A.Object v) = BC8.pack $ case M.lookup "reason" v of
-                Just (A.String t) -> ": " ++ T.unpack t
+        msg v = sm <> reason v
+        reason (A.Object v) = case M.lookup "reason" v of
+                Just (A.String t) -> ": " <> cs t
                 _                 -> ""
         reason _ = B.empty
 

@@ -29,20 +29,19 @@ module Database.CouchDB.Conduit.Internal.Connection (
     
 ) where
 
-import              Control.Monad.Trans.Reader (ReaderT, ask, runReaderT)
-import              Control.Exception (Exception)
-import              Control.Monad.Trans.Class (lift)
+import Control.Monad.Trans.Reader (ReaderT, ask, runReaderT)
+import Control.Exception (Exception)
+import Control.Monad.Trans.Class (lift)
 
-import              Data.Conduit (ResourceIO, ResourceT, runResourceT)
+import Data.Generics (Typeable)
+import Data.Default (Default (def))
+import qualified Data.ByteString as B
+import qualified Data.Text.Encoding as TE
+import qualified Blaze.ByteString.Builder as BLB
+import Data.Conduit (ResourceIO, ResourceT, runResourceT)
 
-import qualified    Network.HTTP.Conduit as H
-import qualified    Network.HTTP.Types as HT
-
-import              Data.Generics (Typeable)
-import              Data.Default (Default (def))
-import qualified    Data.ByteString as B
-import qualified    Data.Text.Encoding as TE
-import qualified    Blaze.ByteString.Builder as BLB
+import qualified Network.HTTP.Conduit as H
+import qualified Network.HTTP.Types as HT
 
 -----------------------------------------------------------------------------
 -- Paths

@@ -60,7 +60,7 @@ couchRev :: MonadCouch m =>
 couchRev db p = D.couchRev (mkPath [db, p]) 
 
 -- | Brain-free version of 'couchRev'. If document absent, 
---   just return 'B.empty'.
+--   just return empty ByteString.
 couchRev' :: MonadCouch m => 
        Path       -- ^ Database.
     -> Path       -- ^ Document path.

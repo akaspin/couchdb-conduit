@@ -1,5 +1,5 @@
 name:           couchdb-conduit
-version:        0.7.4
+version:        0.7.5
 cabal-version:  >= 1.8
 build-type:     Simple
 stability:      Stable
@@ -41,6 +41,7 @@ library
                    utf8-string >= 0.3 && < 0.4,
                    text >= 0.11 && < 0.12,
                    unordered-containers >= 0.1,
+                   string-conversions,
                    syb,
                    data-default,
                    blaze-builder >= 0.2.1 && < 0.4

@@ -13,22 +13,25 @@ module Database.CouchDB.Conduit.Internal.Doc (
 ) where
 
 import              Prelude hiding (catch)
-import              Control.Exception.Lifted (catch)
-import              Control.Monad.Trans.Class (lift)
-import              Data.Maybe (fromJust)
-import qualified    Data.ByteString as B
-import qualified    Data.ByteString.Lazy as BL
-import qualified    Data.Text.Encoding as TE
-import qualified    Data.Aeson as A
-import              Data.Conduit (ResourceT, resourceThrow, ($$))
-import qualified    Data.Conduit.Attoparsec as CA
-import qualified    Network.HTTP.Conduit as H
-import              Network.HTTP.Types as HT
+
+import Control.Monad (void)
+import Control.Exception.Lifted (catch)
+import Control.Monad.Trans.Class (lift)
+
+import Data.Maybe (fromJust)
+import qualified Data.ByteString as B
+import qualified Data.ByteString.Lazy as BL
+import qualified Data.Text.Encoding as TE
+import qualified Data.Aeson as A
+import Data.Conduit (ResourceT, resourceThrow, ($$))
+import qualified Data.Conduit.Attoparsec as CA
+
+import qualified Network.HTTP.Conduit as H
+import Network.HTTP.Types as HT
 
 import              Database.CouchDB.Conduit.Internal.Connection
 import              Database.CouchDB.Conduit.LowLevel (couch, protect')
 import              Database.CouchDB.Conduit.Internal.Parser
-import Control.Monad (void)
 
 ------------------------------------------------------------------------------
 -- Type-independent methods
@@ -39,8 +42,7 @@ couchRev :: MonadCouch m =>
        Path                 -- ^ Correct 'Path' with escaped fragments.
     -> ResourceT m Revision
 couchRev p = do
-    (H.Response _ hs _) <- couch HT.methodHead 
-                                 p [] [] 
+    (H.Response _ hs _) <- couch HT.methodHead p [] [] 
                                  (H.RequestBodyBS B.empty) protect' 
     return $ peekRev hs        
   where
@@ -129,19 +131,3 @@ couchPutWith' :: MonadCouch m =>
 couchPutWith' f p q val = do
     rev <- couchRev' p
     couchPutWith f p rev q val
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
