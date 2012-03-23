@@ -1,6 +1,5 @@
 {-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE FlexibleContexts #-}
@@ -18,6 +17,7 @@ module Database.CouchDB.Conduit.Internal.Connection (
     def,
     couchHost,
     couchPort,
+    couchManager,
     couchLogin,
     couchPass,
     couchPrefix,
@@ -33,11 +33,13 @@ module Database.CouchDB.Conduit.Internal.Connection (
 import Control.Monad.Trans.Reader (ReaderT, ask, runReaderT)
 import Control.Exception (Exception)
 import Control.Monad.Trans.Class (lift)
-import Control.Monad.IO.Class (MonadIO)
+import Control.Monad.Base (liftBase)
+import Control.Monad.IO.Class (MonadIO, liftIO)
 import Control.Monad.Trans.Control (MonadBaseControl (..)) 
-import Control.Monad.Trans.Resource (MonadResource, MonadThrow, MonadUnsafeIO, 
-    ResourceT, runResourceT)
 
+
+--import Data.Conduit (runResourceT, ResourceT(..))
+import Control.Monad.Trans.Resource (MonadResource(..), runResourceT, ResourceT)
 import Data.Generics (Typeable)
 import Data.Default (Default (def))
 import qualified Data.ByteString as B
@@ -93,6 +95,10 @@ data CouchConnection = CouchConnection {
         -- ^ Hostname. Default value is \"localhost\"
     , couchPort :: Int              
         -- ^ Port. 5984 by default.
+    , couchManager :: Maybe H.Manager  
+        -- ^ Connection 'Manager'. 'Nothing' by default. If you need to use
+        --   your 'H.Manager' (for connection pooling for example), set it to
+        --   'Just' 'H.Manager'.
     , couchLogin :: B.ByteString
         -- ^ CouchDB login. By default is 'B.empty'.
     , couchPass :: B.ByteString
@@ -103,7 +109,7 @@ data CouchConnection = CouchConnection {
 }
 
 instance Default CouchConnection where
-    def = CouchConnection "localhost" 5984 B.empty B.empty B.empty
+    def = CouchConnection "localhost" 5984 Nothing B.empty B.empty B.empty
 
 -----------------------------------------------------------------------------
 -- Runtime
@@ -121,14 +127,13 @@ instance Default CouchConnection where
 -- since then performance is improved by eliminating one monad from the final 
 -- transformer stack.
 class (MonadResource m, MonadBaseControl IO m) => MonadCouch m where
-    couchConnection :: m (H.Manager, CouchConnection)
+    couchConnection :: m CouchConnection
 
 instance (MonadResource m, MonadBaseControl IO m) => 
-        MonadCouch (ReaderT (H.Manager, CouchConnection) m) where
+        MonadCouch (ReaderT CouchConnection m) where
     couchConnection = ask
-
---No instance for (MonadCouch (ResourceT (ReaderT 
--- (H.Manager, CouchConnection) (ResourceT IO)))) 
+    
+--instance MonadResource m => MonadResource (ResourceT IO m)
 
 -- | A CouchDB Error.
 data CouchError 
@@ -144,31 +149,32 @@ data CouchError
   deriving (Show, Typeable)
 instance Exception CouchError
 
--- | Connect to a CouchDB server, run a sequence of CouchDB actions, and then 
---   close the connection.. This function is a combination of 'H.withManager', 
+-- | Run a sequence of CouchDB actions. This function is a combination of 
 --   'withCouchConnection', 'runReaderT' and 'runResourceT'.
 --  
---   If you create your own instance of 'MonadCouch' or use connection pool, 
---   use 'withCouchConnection'.  
-runCouch :: (MonadThrow m, MonadUnsafeIO m, MonadIO m, MonadBaseControl IO m) =>
-       CouchConnection            -- ^ Couch connection
-    -> ReaderT (H.Manager, CouchConnection) (ResourceT m) a 
-                                  -- ^ Actions
-    -> m a
-runCouch c f = H.withManager $ \manager -> 
-    withCouchConnection manager c $ runReaderT $ runResourceT $ lift f
+--   If you create your own instance of 'MonadCouch', use 'withCouchConnection'.  
+--runCouch :: (MonadIO m) =>
+--       CouchConnection                            -- ^ Couch connection
+--    -> ResourceT (ReaderT CouchConnection m) a    -- ^ CouchDB actions
+--    -> m a
+--runCouch :: (MonadIO m) =>
+--            CouchConnection
+--            -> ResourceT (ReaderT CouchConnection (ResourceT IO)) a 
+--            -> m a
+runCouch c = withCouchConnection c . runReaderT . runResourceT
 
--- | Run a sequence of CouchDB actions with provided 'H.Manager' and 
---   'CouchConnection'. 
+-- | Connect to a CouchDB server, call the supplied function, and then close 
+--   the connection.
 -- 
 -- > withCouchConnection def {couchDB = "db"} . runReaderT . runResourceT $ do
 -- >    ... -- actions
-withCouchConnection :: (MonadResource m, MonadBaseControl IO m) => 
-       H.Manager            -- ^ Connection manager
-    -> CouchConnection      -- ^ Couch connection
-    -> ((H.Manager, CouchConnection) -> m a) 
-                            -- ^ Actions
-    -> m a
-withCouchConnection man c@(CouchConnection{}) f = 
-    f (man, c)
+--withCouchConnection :: (MonadResource m, MonadBaseControl IO m) =>
+--       CouchConnection              -- ^ Couch connection
+--    -> (CouchConnection -> m a)     -- ^ Function to run
+--    -> m a
+withCouchConnection c@(CouchConnection _ _ mayMan  _ _ _) f = 
+    case mayMan of
+        -- Allocate manager with helper
+        Nothing -> H.withManager $ \m -> lift $ f $ c {couchManager = Just m}
+        _ -> f c
 

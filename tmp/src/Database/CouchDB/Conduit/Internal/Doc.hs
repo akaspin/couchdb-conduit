@@ -40,7 +40,7 @@ import              Database.CouchDB.Conduit.Internal.Parser
 -- | Get Revision of a document. 
 couchRev :: MonadCouch m => 
        Path                 -- ^ Correct 'Path' with escaped fragments.
-    -> m Revision
+    -> ResourceT m Revision
 couchRev p = do
     (H.Response _ _ hs _) <- couch HT.methodHead p [] [] 
                                  (H.RequestBodyBS B.empty) protect' 
@@ -52,7 +52,7 @@ couchRev p = do
 --   just return 'B.empty'.
 couchRev' :: MonadCouch m =>
        Path                 -- ^ Correct 'Path' with escaped fragments.
-    -> m Revision
+    -> ResourceT m Revision
 couchRev' p = 
     catch (couchRev p) handler404
   where
@@ -63,7 +63,7 @@ couchRev' p =
 couchDelete :: MonadCouch m => 
        Path                 -- ^ Correct 'Path' with escaped fragments.
     -> Revision             -- ^ Revision
-    -> m ()
+    -> ResourceT m ()
 couchDelete p r = void $
   couch methodDelete p 
         [] [("rev", Just r)]
@@ -78,12 +78,12 @@ couchGetWith :: MonadCouch m =>
           (A.Value -> A.Result a)    -- ^ Parser
        -> Path                       -- ^ Correct 'Path' with escaped fragments.
        -> Query                      -- ^ Query
-       -> m (Revision, a)
+       -> ResourceT m (Revision, a)
 couchGetWith f p q = do
     H.Response _ _ _ bsrc <- couch HT.methodGet 
                                  p [] q 
                                  (H.RequestBodyBS B.empty) protect'
-    j <- bsrc $$ CA.sinkParser A.json
+    j <- lift $ bsrc $$ CA.sinkParser A.json
     A.String r <- either throw return $ extractField "_rev" j
     o <- jsonToTypeWith f j 
     return (TE.encodeUtf8 r, o)
@@ -96,12 +96,12 @@ couchPutWith :: MonadCouch m =>
                             -- ^ empty string.
    -> Query                 -- ^ Query arguments.
    -> a                     -- ^ The object to store.
-   -> m Revision
+   -> ResourceT m Revision
 couchPutWith f p r q val = do
     H.Response _ _ _ bsrc <- couch HT.methodPut 
                                  p (ifMatch r) q 
                                  (H.RequestBodyLBS $ f val) protect'
-    j <- bsrc $$ CA.sinkParser A.json
+    j <- lift $ bsrc $$ CA.sinkParser A.json
     either throw return $ extractRev j
   where 
     ifMatch "" = []
@@ -114,7 +114,7 @@ couchPutWith_ :: MonadCouch m =>
    -> Path                  -- ^ Correct 'Path' with escaped fragments.
    -> HT.Query              -- ^ Query arguments.
    -> a                     -- ^ The object to store.
-   -> m Revision      
+   -> ResourceT m Revision      
 couchPutWith_ f p q val = do
     rev <- couchRev' p
     if rev == "" 
@@ -127,7 +127,7 @@ couchPutWith' :: MonadCouch m =>
    -> Path                  -- ^ Correct 'Path' with escaped fragments.
    -> HT.Query              -- ^ Query arguments.
    -> a                     -- ^ The object to store.
-   -> m Revision      
+   -> ResourceT m Revision      
 couchPutWith' f p q val = do
     rev <- couchRev' p
     couchPutWith f p rev q val

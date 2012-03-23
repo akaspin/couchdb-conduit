@@ -24,6 +24,7 @@ module Database.CouchDB.Conduit (
     def,
     couchHost,
     couchPort,
+    couchManager,
     couchLogin,
     couchPass,
     couchPrefix,
@@ -55,7 +56,7 @@ import qualified Database.CouchDB.Conduit.Internal.Doc as D
 couchRev :: MonadCouch m => 
        Path       -- ^ Database.
     -> Path       -- ^ Document path.
-    -> m Revision
+    -> ResourceT m Revision
 couchRev db p = D.couchRev (mkPath [db, p]) 
 
 -- | Brain-free version of 'couchRev'. If document absent, 
@@ -63,7 +64,7 @@ couchRev db p = D.couchRev (mkPath [db, p])
 couchRev' :: MonadCouch m => 
        Path       -- ^ Database.
     -> Path       -- ^ Document path.
-    -> m Revision
+    -> ResourceT m Revision
 couchRev' db p = D.couchRev' (mkPath [db, p]) 
 
 -- | Delete the given revision of the object.  
@@ -71,5 +72,5 @@ couchDelete :: MonadCouch m =>
        Path       -- ^ Database.
     -> Path       -- ^ Document path.
     -> Revision             -- ^ Revision
-    -> m ()
+    -> ResourceT m ()
 couchDelete db p = D.couchDelete (mkPath [db, p]) 

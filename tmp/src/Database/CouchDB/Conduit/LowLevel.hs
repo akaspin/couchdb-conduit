@@ -52,17 +52,9 @@ type CouchResponse m = H.Response (Source m B.ByteString)
 --    -> HT.RequestHeaders        -- ^ Headers
 --    -> HT.Query                 -- ^ Query args
 --    -> H.RequestBody m          -- ^ Request body
---    -> (CouchResponse m -> m (CouchResponse m))
+--    -> (CouchResponse m -> ResourceT m (CouchResponse m))
 --                                -- ^ Protect function. See 'protect'
---    -> m (CouchResponse m)
-couch :: MonadCouch m =>
-                    HT.Method
-                    -> B.ByteString
-                    -> HT.RequestHeaders
-                    -> HT.Query
-                    -> H.RequestBody m
-                    -> (CouchResponse m -> m b)
-                    -> m b
+--    -> ResourceT m (CouchResponse m)
 couch meth path = 
     couch' meth withPrefix
   where
@@ -79,11 +71,11 @@ couch meth path =
 --    -> HT.RequestHeaders        -- ^ Headers
 --    -> HT.Query                 -- ^ Query args
 --    -> H.RequestBody m          -- ^ Request body
---    -> (CouchResponse m -> m (CouchResponse m))
+--    -> (CouchResponse m -> ResourceT m (CouchResponse m))
 --                                -- ^ Protect function. See 'protect'
---    -> m (CouchResponse m)
+--    -> ResourceT m (CouchResponse m)
 couch' meth pathFn hdrs qs reqBody protectFn =  do
-    (manager, conn) <- couchConnection
+    conn <- lift couchConnection
     let req = H.def 
             { H.method          = meth
             , H.host            = couchHost conn
@@ -96,7 +88,7 @@ couch' meth pathFn hdrs qs reqBody protectFn =  do
     -- Apply auth if needed
     let req' = if couchLogin conn == B.empty then req else H.applyBasicAuth 
             (couchLogin conn) (couchPass conn) req
-    res <- H.http req' manager
+    res <- lift $ H.http req' (fromJust $ couchManager conn)
     protectFn res
 
 -- | Protect 'H.Response' from bad status codes. If status code in list 
@@ -106,16 +98,16 @@ couch' meth pathFn hdrs qs reqBody protectFn =  do
 --   extract \"reason\" message.
 --   
 --   To protect from typical errors use 'protect''.
---protect :: MonadCouch m => 
---       [Int]             -- ^ Good codes
---    -> (CouchResponse m -> m (CouchResponse m)) -- ^ handler
---    -> CouchResponse m   -- ^ Response
---    -> m (CouchResponse m)
+protect :: MonadCouch m => 
+       [Int]             -- ^ Good codes
+    -> (CouchResponse m -> ResourceT m (CouchResponse m)) -- ^ handler
+    -> CouchResponse m   -- ^ Response
+    -> ResourceT m (CouchResponse m)
 protect goodCodes h ~resp@(H.Response (HT.Status sc sm) _ _ bsrc)
     | sc == 304 = throw NotModified
     | sc `elem` goodCodes = h resp
     | otherwise = do
-        v <- catch (bsrc $$ sinkParser A.json)
+        v <- catch (lift $ bsrc $$ sinkParser A.json)
                    (\(_::SomeException) -> return A.Null)
         throw $ CouchHttpError sc $ msg v
         where 
@@ -132,5 +124,5 @@ protect goodCodes h ~resp@(H.Response (HT.Status sc sm) _ _ bsrc)
 --   See 'protect' for details.       
 protect' :: MonadCouch m => 
        CouchResponse m   -- ^ Response
-    -> m (CouchResponse m)
+    -> ResourceT m (CouchResponse m)
 protect' = protect [200, 201, 202, 304] return

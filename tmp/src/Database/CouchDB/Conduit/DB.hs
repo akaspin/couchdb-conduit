@@ -37,7 +37,7 @@ import Database.CouchDB.Conduit.LowLevel (couch, couch', protect, protect')
 -- | Create CouchDB database. 
 couchPutDB :: MonadCouch m => 
        Path             -- ^ Database
-    -> m ()
+    -> ResourceT m ()
 couchPutDB db = void $ couch HT.methodPut 
                             (mkPath [db]) [] [] 
                             (H.RequestBodyBS B.empty)
@@ -47,7 +47,7 @@ couchPutDB db = void $ couch HT.methodPut
 --   absence. For this it handles @412@ responses.
 couchPutDB_ :: MonadCouch m => 
        Path             -- ^ Database
-    -> m ()
+    -> ResourceT m ()
 couchPutDB_ db = void $ couch HT.methodPut 
                     (mkPath [db]) [] []
                     (H.RequestBodyBS B.empty) 
@@ -56,7 +56,7 @@ couchPutDB_ db = void $ couch HT.methodPut
 -- | Delete a database.
 couchDeleteDB :: MonadCouch m => 
        Path             -- ^ Database
-    -> m ()
+    -> ResourceT m ()
 couchDeleteDB db = void $ couch HT.methodDelete 
                     (mkPath [db]) [] []
                     (H.RequestBodyBS B.empty) protect' 
@@ -68,7 +68,7 @@ couchSecureDB :: MonadCouch m =>
     -> [B.ByteString]   -- ^ Admin names
     -> [B.ByteString]   -- ^ Readers roles 
     -> [B.ByteString]   -- ^ Readers names
-    -> m ()       
+    -> ResourceT m ()       
 couchSecureDB db adminRoles adminNames readersRoles readersNames = 
     void $ couch HT.methodPut 
             (mkPath [db, "_security"]) [] []
@@ -90,7 +90,7 @@ couchReplicateDB :: MonadCouch m =>
     -> Bool             -- ^ Target creation flag
     -> Bool             -- ^ Continuous flag
     -> Bool             -- ^ Cancel flag
-    -> m ()
+    -> ResourceT m ()
 couchReplicateDB source target createTarget continuous cancel = 
     void $ couch' HT.methodPost (const "/_replicate") [] []
             reqBody protect' 
