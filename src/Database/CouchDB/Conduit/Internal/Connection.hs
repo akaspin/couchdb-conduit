@@ -33,8 +33,9 @@ import Control.Monad.Trans.Reader (ReaderT, ask, runReaderT)
 import Control.Exception (Exception)
 import Control.Monad.Trans.Class (lift)
 import Control.Monad.IO.Class (MonadIO)
-import Control.Monad.Trans.Control (MonadBaseControl (..)) 
-import Control.Monad.Trans.Resource (MonadResource, MonadThrow, MonadUnsafeIO, 
+import Control.Monad.Trans.Control (MonadBaseControl (..))
+ 
+import Data.Conduit (MonadResource, MonadThrow, MonadUnsafeIO, 
     ResourceT, runResourceT)
 
 import Data.Generics (Typeable)
@@ -155,12 +156,12 @@ runCouch :: (MonadThrow m, MonadUnsafeIO m, MonadIO m, MonadBaseControl IO m) =>
                                   -- ^ Actions
     -> m a
 runCouch c f = H.withManager $ \manager -> 
-    withCouchConnection manager c $ runReaderT $ runResourceT $ lift f
+    withCouchConnection manager c $ runReaderT . runResourceT . lift $ f
 
 -- | Run a sequence of CouchDB actions with provided 'H.Manager' and 
 --   'CouchConnection'. 
 -- 
--- > withCouchConnection def {couchDB = "db"} . runReaderT . runResourceT $ do
+-- > withCouchConnection manager def {couchDB = "db"} . runReaderT . runResourceT $ do
 -- >    ... -- actions
 withCouchConnection :: (MonadResource m, MonadBaseControl IO m) => 
        H.Manager            -- ^ Connection manager
