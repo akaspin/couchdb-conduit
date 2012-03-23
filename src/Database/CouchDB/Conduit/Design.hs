@@ -17,7 +17,6 @@ import qualified Data.Text.Encoding as TE
 import qualified Data.HashMap.Lazy as M
 import qualified Data.Aeson as A
 import qualified Data.Aeson.Types as AT
-import Data.Conduit (ResourceT)
 
 import Database.CouchDB.Conduit.Internal.Connection 
         (MonadCouch, CouchError, Path, mkPath, Revision)
@@ -31,7 +30,7 @@ couchPutView :: MonadCouch m =>
     -> Path                 -- ^ View name
     -> B.ByteString         -- ^ Map function
     -> Maybe B.ByteString   -- ^ Reduce function
-    -> ResourceT m ()
+    -> m ()
 couchPutView db designName viewName mapF reduceF = do
     (_, A.Object d) <- getDesignDoc path
     void $ couchPutWith' A.encode path [] $ inferViews (purge_ d)
@@ -52,7 +51,7 @@ couchPutView db designName viewName mapF reduceF = do
 
 getDesignDoc :: MonadCouch m => 
        Path 
-    -> ResourceT m (Revision, AT.Value)
+    -> m (Revision, AT.Value)
 getDesignDoc designName = catch 
         (couchGetWith A.Success designName [])
         (\(_ :: CouchError) -> return (B.empty, AT.emptyObject))

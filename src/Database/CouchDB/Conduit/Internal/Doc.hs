@@ -16,14 +16,13 @@ import              Prelude hiding (catch)
 
 import Control.Monad (void)
 import Control.Exception.Lifted (catch, throw)
-import Control.Monad.Trans.Class (lift)
 
 import Data.Maybe (fromJust)
 import qualified Data.ByteString as B
 import qualified Data.ByteString.Lazy as BL
 import qualified Data.Text.Encoding as TE
 import qualified Data.Aeson as A
-import Data.Conduit (($$), ResourceT)
+import Data.Conduit (($$),)
 import qualified Data.Conduit.Attoparsec as CA
 
 import qualified Network.HTTP.Conduit as H

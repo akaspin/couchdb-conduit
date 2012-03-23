@@ -47,7 +47,6 @@ module Database.CouchDB.Conduit (
     
 ) where
 
-import Data.Conduit (ResourceT)
 import Database.CouchDB.Conduit.Internal.Connection
 import qualified Database.CouchDB.Conduit.Internal.Doc as D
 

@@ -13,7 +13,6 @@ module Database.CouchDB.Conduit.Implicit (
 
 import qualified Data.Aeson as A
 import qualified Data.ByteString.Lazy as BL (ByteString)
-import Data.Conduit (ResourceT)
 
 import Database.CouchDB.Conduit.Internal.Connection 
         (MonadCouch(..), Path, mkPath, Revision)
@@ -30,7 +29,7 @@ couchGet :: MonadCouch m =>
     -> Path                       -- ^ Document path.
     -> Path                       -- ^ Document path.
     -> Query                      -- ^ Query
-    -> ResourceT m (Revision, a)
+    -> m (Revision, a)
 couchGet f db p = couchGetWith f (mkPath [db, p])
 
 -- | Put document, with given encoder
@@ -42,7 +41,7 @@ couchPut :: MonadCouch m =>
                             -- ^ empty string.
    -> Query                 -- ^ Query arguments.
    -> a                     -- ^ The object to store.
-   -> ResourceT m Revision
+   -> m Revision
 couchPut f db p = couchPutWith f (mkPath [db, p])
 
 -- | \"Don't care\" version of 'couchPut'. Creates document only in its 
@@ -53,7 +52,7 @@ couchPut_ :: MonadCouch m =>
    -> Path                  -- ^ Document path.
    -> Query                 -- ^ Query arguments.
    -> a                     -- ^ The object to store.
-   -> ResourceT m Revision
+   -> m Revision
 couchPut_ f db p = couchPutWith_ f (mkPath [db, p])
 
 -- | Brute force version of 'couchPut'. Creates a document regardless of 
@@ -64,6 +63,6 @@ couchPut' :: MonadCouch m =>
    -> Path                  -- ^ Document path.
    -> Query                 -- ^ Query arguments.
    -> a                     -- ^ The object to store.
-   -> ResourceT m Revision
+   -> m Revision
 couchPut' f db p = couchPutWith' f (mkPath [db, p])
 

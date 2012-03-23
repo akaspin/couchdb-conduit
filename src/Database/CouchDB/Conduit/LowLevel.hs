@@ -21,16 +21,13 @@ import              Prelude hiding (catch)
 
 import Control.Exception.Lifted (catch, throw)
 import Control.Exception (SomeException)
-import Control.Monad.Trans.Class (lift)
-import Control.Monad.Base (liftBase)
 
-import Data.Maybe (fromJust)
 import qualified Data.ByteString as B
 import qualified Data.Aeson as A
 import qualified Data.HashMap.Lazy as M
 import Data.String.Conversions ((<>), cs)
 
-import Data.Conduit (Source, ($$), ResourceT, runResourceT)
+import Data.Conduit (Source, ($$))
 import Data.Conduit.Attoparsec (sinkParser)
                         
 import qualified Network.HTTP.Conduit as H
@@ -45,24 +42,16 @@ type CouchResponse m = H.Response (Source m B.ByteString)
 --   around 'H.http'.  Most of the time you should use one of the other access 
 --   functions, but this function is needed for example to write and read 
 --   attachments that are not in JSON format.
---couch :: MonadCouch m =>
---       HT.Method                -- ^ Method
---    -> Path                     -- ^ Correct 'Path' with escaped fragments.
---                                --   'couchPrefix' will be prepended to path.
---    -> HT.RequestHeaders        -- ^ Headers
---    -> HT.Query                 -- ^ Query args
---    -> H.RequestBody m          -- ^ Request body
---    -> (CouchResponse m -> m (CouchResponse m))
---                                -- ^ Protect function. See 'protect'
---    -> m (CouchResponse m)
 couch :: MonadCouch m =>
-                    HT.Method
-                    -> B.ByteString
-                    -> HT.RequestHeaders
-                    -> HT.Query
-                    -> H.RequestBody m
-                    -> (CouchResponse m -> m b)
-                    -> m b
+       HT.Method                -- ^ Method
+    -> Path                     -- ^ Correct 'Path' with escaped fragments.
+                                --   'couchPrefix' will be prepended to path.
+    -> HT.RequestHeaders        -- ^ Headers
+    -> HT.Query                 -- ^ Query args
+    -> H.RequestBody m          -- ^ Request body
+    -> (CouchResponse m -> m (CouchResponse m))
+                                -- ^ Protect function. See 'protect'
+    -> m (CouchResponse m)
 couch meth path = 
     couch' meth withPrefix
   where
@@ -72,16 +61,16 @@ couch meth path =
 
 -- | More generalized version of 'couch'. Instead 'Path' it takes function
 --   what takes prefix and returns a path.
---couch' :: MonadCouch m =>
---       HT.Method                -- ^ Method
---    -> (Path -> Path)           -- ^ 'couchPrefix'->Path function. Output must 
---                                --   be correct 'Path' with escaped fragments.
---    -> HT.RequestHeaders        -- ^ Headers
---    -> HT.Query                 -- ^ Query args
---    -> H.RequestBody m          -- ^ Request body
---    -> (CouchResponse m -> m (CouchResponse m))
---                                -- ^ Protect function. See 'protect'
---    -> m (CouchResponse m)
+couch' :: MonadCouch m =>
+       HT.Method                -- ^ Method
+    -> (Path -> Path)           -- ^ 'couchPrefix'->Path function. Output must 
+                                --   be correct 'Path' with escaped fragments.
+    -> HT.RequestHeaders        -- ^ Headers
+    -> HT.Query                 -- ^ Query args
+    -> H.RequestBody m          -- ^ Request body
+    -> (CouchResponse m -> m (CouchResponse m))
+                                -- ^ Protect function. See 'protect'
+    -> m (CouchResponse m)
 couch' meth pathFn hdrs qs reqBody protectFn =  do
     (manager, conn) <- couchConnection
     let req = H.def 
@@ -106,11 +95,11 @@ couch' meth pathFn hdrs qs reqBody protectFn =  do
 --   extract \"reason\" message.
 --   
 --   To protect from typical errors use 'protect''.
---protect :: MonadCouch m => 
---       [Int]             -- ^ Good codes
---    -> (CouchResponse m -> m (CouchResponse m)) -- ^ handler
---    -> CouchResponse m   -- ^ Response
---    -> m (CouchResponse m)
+protect :: MonadCouch m => 
+       [Int]             -- ^ Good codes
+    -> (CouchResponse m -> m (CouchResponse m)) -- ^ handler
+    -> CouchResponse m   -- ^ Response
+    -> m (CouchResponse m)
 protect goodCodes h ~resp@(H.Response (HT.Status sc sm) _ _ bsrc)
     | sc == 304 = throw NotModified
     | sc `elem` goodCodes = h resp

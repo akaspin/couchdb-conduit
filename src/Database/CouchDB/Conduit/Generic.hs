@@ -51,7 +51,7 @@ module Database.CouchDB.Conduit.Generic (
 import Data.Generics (Data)
 import qualified    Data.Aeson as A
 import qualified    Data.Aeson.Generic as AG
-import Data.Conduit (Conduit(..), MonadResource, ResourceT)
+import Data.Conduit (Conduit(..), MonadResource)
 
 import Network.HTTP.Types (Query)
 
@@ -66,7 +66,7 @@ couchGet :: (MonadCouch m, Data a) =>
        Path         -- ^ Database
     -> Path         -- ^ Document path
     -> Query     -- ^ Query
-    -> ResourceT m (Revision, a)
+    -> m (Revision, a)
 couchGet db p = couchGetWith AG.fromJSON (mkPath [db, p])  
 
 -- | Put an object in Couch DB with revision, returning the new Revision.
@@ -76,7 +76,7 @@ couchPut :: (MonadCouch m, Data a) =>
     -> Revision     -- ^ Document revision. For new docs provide empty string.
     -> Query        -- ^ Query arguments.
     -> a            -- ^ The object to store.
-    -> ResourceT m Revision      
+    -> m Revision      
 couchPut db p = couchPutWith AG.encode (mkPath [db, p])
     
 -- | \"Don't care\" version of 'couchPut'. Creates document only in its 
@@ -86,7 +86,7 @@ couchPut_ :: (MonadCouch m, Data a) =>
     -> Path         -- ^ Document path
     -> Query    -- ^ Query arguments.
     -> a           -- ^ The object to store.
-    -> ResourceT m Revision      
+    -> m Revision      
 couchPut_ db p = couchPutWith_ AG.encode (mkPath [db, p])
 
 -- | Brute force version of 'couchPut'. Creates a document regardless of 
@@ -96,7 +96,7 @@ couchPut' :: (MonadCouch m, Data a) =>
     -> Path         -- ^ Document path
     -> Query    -- ^ Query arguments.
     -> a           -- ^ The object to store.
-    -> ResourceT m Revision      
+    -> m Revision      
 couchPut' db p = couchPutWith' AG.encode (mkPath [db, p])
 
 ------------------------------------------------------------------------------

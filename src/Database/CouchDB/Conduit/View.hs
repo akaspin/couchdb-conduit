@@ -50,7 +50,6 @@ module Database.CouchDB.Conduit.View
 )
  where
 
-import Control.Monad.Trans.Class (lift)
 import Control.Applicative ((<|>))
 import Control.Exception.Lifted (throw)
 
@@ -62,7 +61,7 @@ import qualified Data.HashMap.Lazy as M
 import qualified Data.Aeson as A
 import Data.Attoparsec
 
-import Data.Conduit (MonadResource, ResourceT,
+import Data.Conduit (MonadResource, 
                         Source, Conduit, Sink, ($$), ($=), 
                         sequenceSink, SequencedSinkResponse(..),
                         )
@@ -258,7 +257,7 @@ couchView :: MonadCouch m =>
     -> Path                 -- ^ Design document
     -> Path                 -- ^ View name
     -> HT.Query             -- ^ Query parameters
-    -> ResourceT m (Source m A.Object)
+    -> m (Source m A.Object)
 couchView db design view q = do
     H.Response _ _ _ bsrc <- couch HT.methodGet 
             (viewPath db design view)
@@ -282,10 +281,10 @@ couchView' :: MonadCouch m =>
     -> Path                 -- ^ View name
     -> HT.Query             -- ^ Query parameters
     -> Sink A.Object m a    -- ^ Sink for handle view rows.
-    -> ResourceT m a
+    -> m a
 couchView' db design view q sink = do
     raw <- couchView db design view q
-    lift $ raw $$ sink
+    raw $$ sink
 
 -- | Run CouchDB view in manner like 'H.http' using @POST@ (since CouchDB 0.9).
 --   It's convenient in case that @keys@ paremeter too big for @GET@ query 
@@ -302,7 +301,7 @@ couchViewPost :: (MonadCouch m, A.ToJSON a) =>
     -> Path                 -- ^ View name
     -> HT.Query             -- ^ Query parameters
     -> a                    -- ^ View @keys@. Must be list or cortege.
-    -> ResourceT m (Source m A.Object)    
+    -> m (Source m A.Object)    
 couchViewPost db design view q ks = do
     H.Response _ _ _ bsrc <- couch HT.methodPost 
             (viewPath db design view)  
@@ -321,10 +320,10 @@ couchViewPost' :: (MonadCouch m, A.ToJSON a) =>
     -> HT.Query             -- ^ Query parameters
     -> a                    -- ^ View @keys@. Must be list or cortege.
     -> Sink A.Object m a    -- ^ Sink for handle view rows.
-    -> ResourceT m a
+    -> m a
 couchViewPost' db design view q ks sink = do
     raw <- couchViewPost db design view q ks
-    lift $ raw $$ sink
+    raw $$ sink
 
 -- | Conduit for extract \"value\" field from CouchDB view row.
 rowValue :: Monad m => Conduit A.Object m A.Value
