@@ -150,10 +150,10 @@ instance Exception CouchError
 --   'withCouchConnection', 'runReaderT' and 'runResourceT'.
 --  
 --   If you create your own instance of 'MonadCouch', use 'withCouchConnection'.  
---runCouch :: (MonadResource m, MonadBaseControl IO m) =>
---       CouchConnection                            -- ^ Couch connection
---    -> ResourceT (ReaderT CouchConnection m) a    -- ^ CouchDB actions
---    -> m a
+runCouch :: (MonadResource m, MonadBaseControl IO m) =>
+       CouchConnection                            -- ^ Couch connection
+    -> ResourceT (ReaderT CouchConnection m) a    -- ^ CouchDB actions
+    -> m a
 runCouch c = withCouchConnection c . runReaderT . runResourceT
 
 -- | Connect to a CouchDB server, call the supplied function, and then close 
@@ -161,10 +161,10 @@ runCouch c = withCouchConnection c . runReaderT . runResourceT
 -- 
 -- > withCouchConnection def {couchDB = "db"} . runReaderT . runResourceT $ do
 -- >    ... -- actions
---withCouchConnection :: (MonadResource m, MonadBaseControl IO m) =>
---       CouchConnection              -- ^ Couch connection
---    -> (CouchConnection -> m a)     -- ^ Function to run
---    -> m a
+withCouchConnection :: (MonadResource m, MonadBaseControl IO m) =>
+       CouchConnection              -- ^ Couch connection
+    -> (CouchConnection -> m a)     -- ^ Function to run
+    -> m a
 withCouchConnection c@(CouchConnection _ _ mayMan  _ _ _) f = 
     case mayMan of
         -- Allocate manager with helper
