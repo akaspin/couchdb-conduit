@@ -156,7 +156,7 @@ instance Exception CouchError
 --    -> m a
 --runCouch :: forall m a . MonadIO m =>
 --       CouchConnection -> ResourceT (ReaderT CouchConnection IO) a -> m a
-runCouch c = liftIO . withCouchConnection c . runReaderT . runResourceT
+runCouch c = withCouchConnection c . runReaderT . runResourceT
 
 -- | Connect to a CouchDB server, call the supplied function, and then close 
 --   the connection.
@@ -168,7 +168,7 @@ runCouch c = liftIO . withCouchConnection c . runReaderT . runResourceT
 --    -> (CouchConnection -> m a)     -- ^ Function to run
 --    -> m a
 withCouchConnection c@(CouchConnection _ _ mayMan  _ _ _) f = 
-    case mayMan of
+    liftIO . runResourceT $ case mayMan of
         -- Allocate manager with helper
         Nothing -> H.withManager $ \m -> lift $ f $ c {couchManager = Just m}
         _ -> f c
