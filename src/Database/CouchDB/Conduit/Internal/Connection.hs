@@ -156,12 +156,13 @@ runCouch :: (MonadThrow m, MonadUnsafeIO m, MonadIO m, MonadBaseControl IO m) =>
                                   -- ^ Actions
     -> m a
 runCouch c f = H.withManager $ \manager -> 
-    withCouchConnection manager c $ runReaderT . runResourceT . lift $ f
+    withCouchConnection manager c . runReaderT . runResourceT . lift $ f
 
 -- | Run a sequence of CouchDB actions with provided 'H.Manager' and 
 --   'CouchConnection'. 
 -- 
--- > withCouchConnection manager def {couchDB = "db"} . runReaderT . runResourceT $ do
+-- > withCouchConnection manager def {couchDB = "db"} . runReaderT . 
+-- >          runResourceT . lift $ do
 -- >    ... -- actions
 withCouchConnection :: (MonadResource m, MonadBaseControl IO m) => 
        H.Manager            -- ^ Connection manager
