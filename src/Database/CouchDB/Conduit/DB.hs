@@ -22,11 +22,12 @@ import Control.Monad (void)
 
 import qualified Data.ByteString as B
 import qualified Data.Aeson as A
-
 import Data.Conduit (ResourceT)
 
 import qualified Network.HTTP.Conduit as H
 import qualified Network.HTTP.Types as HT
+
+
 
 import Database.CouchDB.Conduit.Internal.Connection 
             (MonadCouch(..), Path, mkPath)

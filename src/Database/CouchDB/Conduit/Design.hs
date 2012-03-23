@@ -7,11 +7,9 @@ module Database.CouchDB.Conduit.Design (
     couchPutView
 ) where
 
-import              Prelude hiding (catch)
+import Prelude hiding (catch)
 import Control.Monad (void)
 import Control.Exception.Lifted (catch)
-
-import Data.Conduit (ResourceT)
 
 import qualified Data.ByteString as B
 import qualified Data.Text as T
@@ -19,6 +17,7 @@ import qualified Data.Text.Encoding as TE
 import qualified Data.HashMap.Lazy as M
 import qualified Data.Aeson as A
 import qualified Data.Aeson.Types as AT
+import Data.Conduit (ResourceT)
 
 import Database.CouchDB.Conduit.Internal.Connection 
         (MonadCouch, CouchError, Path, mkPath, Revision)

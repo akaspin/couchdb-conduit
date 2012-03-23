@@ -52,6 +52,7 @@ module Database.CouchDB.Conduit.View
 
 import Control.Monad.Trans.Class (lift)
 import Control.Applicative ((<|>))
+import Control.Exception.Lifted (throw)
 
 import Data.Monoid (mconcat)
 import qualified Data.ByteString as B
@@ -61,10 +62,10 @@ import qualified Data.HashMap.Lazy as M
 import qualified Data.Aeson as A
 import Data.Attoparsec
 
-import Data.Conduit (ResourceIO, ResourceT, 
+import Data.Conduit (MonadResource, ResourceT,
                         Source, Conduit, Sink, ($$), ($=), 
                         sequenceSink, SequencedSinkResponse(..),
-                        resourceThrow )
+                        )
 import qualified Data.Conduit.List as CL
 import qualified Data.Conduit.Attoparsec as CA
 
@@ -259,7 +260,7 @@ couchView :: MonadCouch m =>
     -> HT.Query             -- ^ Query parameters
     -> ResourceT m (Source m A.Object)
 couchView db design view q = do
-    H.Response _ _ bsrc <- couch HT.methodGet 
+    H.Response _ _ _ bsrc <- couch HT.methodGet 
             (viewPath db design view)
             [] q 
             (H.RequestBodyBS B.empty) protect'
@@ -284,7 +285,7 @@ couchView' :: MonadCouch m =>
     -> ResourceT m a
 couchView' db design view q sink = do
     raw <- couchView db design view q
-    raw $$ sink
+    lift $ raw $$ sink
 
 -- | Run CouchDB view in manner like 'H.http' using @POST@ (since CouchDB 0.9).
 --   It's convenient in case that @keys@ paremeter too big for @GET@ query 
@@ -303,7 +304,7 @@ couchViewPost :: (MonadCouch m, A.ToJSON a) =>
     -> a                    -- ^ View @keys@. Must be list or cortege.
     -> ResourceT m (Source m A.Object)    
 couchViewPost db design view q ks = do
-    H.Response _ _ bsrc <- couch HT.methodPost 
+    H.Response _ _ _ bsrc <- couch HT.methodPost 
             (viewPath db design view)  
             [] 
             q 
@@ -323,13 +324,13 @@ couchViewPost' :: (MonadCouch m, A.ToJSON a) =>
     -> ResourceT m a
 couchViewPost' db design view q ks sink = do
     raw <- couchViewPost db design view q ks
-    raw $$ sink
+    lift $ raw $$ sink
 
 -- | Conduit for extract \"value\" field from CouchDB view row.
-rowValue :: ResourceIO m => Conduit A.Object m A.Value
+rowValue :: Monad m => Conduit A.Object m A.Value
 rowValue = CL.mapM (\v -> case M.lookup "value" v of
             (Just o) -> return o
-            _ -> resourceThrow $ CouchInternalError $ BS8.pack
+            _ -> throw $ CouchInternalError $ BS8.pack
                     ("View row does not contain value: " ++ show v))
 
 -----------------------------------------------------------------------------
@@ -344,20 +345,20 @@ viewPath db design view = mkPath [db, "_design", design, "_view", view]
 -- Internal view parser
 -----------------------------------------------------------------------------
 
-conduitCouchView :: ResourceIO m => Conduit B.ByteString m A.Object
+conduitCouchView :: MonadResource m => Conduit B.ByteString m A.Object
 conduitCouchView = sequenceSink () $ \() -> do
     b <- CA.sinkParser viewStart
     if b then return $ StartConduit viewLoop
          else return Stop
 
-viewLoop :: ResourceIO m => Conduit B.ByteString m A.Object   
+viewLoop :: MonadResource m => Conduit B.ByteString m A.Object   
 viewLoop = sequenceSink False $ \isLast -> 
     if isLast then return Stop
     else do 
         v <- CA.sinkParser (A.json <?> "json object")
         vobj <- case v of
             (A.Object o) -> return o
-            _ -> lift $ resourceThrow $ 
+            _ -> throw $ 
                  CouchInternalError "view entry is not an object"
         res <- CA.sinkParser (commaOrClose <?> "comma or close")
         case res of

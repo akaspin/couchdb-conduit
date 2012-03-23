@@ -51,7 +51,7 @@ module Database.CouchDB.Conduit.Generic (
 import Data.Generics (Data)
 import qualified    Data.Aeson as A
 import qualified    Data.Aeson.Generic as AG
-import Data.Conduit (ResourceT, Conduit(..), ResourceIO)
+import Data.Conduit (Conduit(..), MonadResource, ResourceT)
 
 import Network.HTTP.Types (Query)
 
@@ -107,5 +107,5 @@ couchPut' db p = couchPutWith' AG.encode (mkPath [db, p])
 --   to concrete type.
 --   
 -- > res <- couchView "mydesign" "myview" [] $ rowValue =$= toType =$ consume
-toType :: (ResourceIO m, Data a) => Conduit A.Value m a
+toType :: (MonadResource m, Data a) => Conduit A.Value m a
 toType = toTypeWith AG.fromJSON 

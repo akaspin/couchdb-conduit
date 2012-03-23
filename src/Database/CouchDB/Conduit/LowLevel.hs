@@ -12,13 +12,14 @@ module Database.CouchDB.Conduit.LowLevel (
     couch',
     
     -- * Response protection
-    protect,
+    protect
+    ,
     protect'
 ) where
 
 import              Prelude hiding (catch)
 
-import Control.Exception.Lifted (catch)
+import Control.Exception.Lifted (catch, throw)
 import Control.Exception (SomeException)
 import Control.Monad.Trans.Class (lift)
 import Control.Monad.Base (liftBase)
@@ -29,8 +30,7 @@ import qualified Data.Aeson as A
 import qualified Data.HashMap.Lazy as M
 import Data.String.Conversions ((<>), cs)
 
-import Data.Conduit (ResourceT, Source, 
-                        ($$), resourceThrow)
+import Data.Conduit (Source, ($$), ResourceT, runResourceT)
 import Data.Conduit.Attoparsec (sinkParser)
                         
 import qualified Network.HTTP.Conduit as H
@@ -74,7 +74,7 @@ couch' :: MonadCouch m =>
     -> (CouchResponse m -> ResourceT m (CouchResponse m))
                                 -- ^ Protect function. See 'protect'
     -> ResourceT m (CouchResponse m)
-couch' meth pathFn hdrs qs reqBody protectFn = do
+couch' meth pathFn hdrs qs reqBody protectFn =  do
     conn <- lift couchConnection
     let req = H.def 
             { H.method          = meth
@@ -88,7 +88,7 @@ couch' meth pathFn hdrs qs reqBody protectFn = do
     -- Apply auth if needed
     let req' = if couchLogin conn == B.empty then req else H.applyBasicAuth 
             (couchLogin conn) (couchPass conn) req
-    res <- H.http req' (fromJust $ couchManager conn)
+    res <- lift $ H.http req' (fromJust $ couchManager conn)
     protectFn res
 
 -- | Protect 'H.Response' from bad status codes. If status code in list 
@@ -103,13 +103,13 @@ protect :: MonadCouch m =>
     -> (CouchResponse m -> ResourceT m (CouchResponse m)) -- ^ handler
     -> CouchResponse m   -- ^ Response
     -> ResourceT m (CouchResponse m)
-protect goodCodes h ~resp@(H.Response (HT.Status sc sm) _ bsrc)
-    | sc == 304 = liftBase $ resourceThrow NotModified
+protect goodCodes h ~resp@(H.Response (HT.Status sc sm) _ _ bsrc)
+    | sc == 304 = throw NotModified
     | sc `elem` goodCodes = h resp
     | otherwise = do
-        v <- catch (bsrc $$ sinkParser A.json)
+        v <- catch (lift $ bsrc $$ sinkParser A.json)
                    (\(_::SomeException) -> return A.Null)
-        liftBase $ resourceThrow $ CouchHttpError sc $ msg v
+        throw $ CouchHttpError sc $ msg v
         where 
         msg v = sm <> reason v
         reason (A.Object v) = case M.lookup "reason" v of

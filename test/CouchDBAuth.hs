@@ -8,6 +8,6 @@ import Data.ByteString.Char8 ()  -- just orchan
 
 login, pass :: ByteString
 -- | Set your login
-login = ""
+login = "root"
 -- | Set your pass
-pass = ""
+pass = "sumatra"

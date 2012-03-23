@@ -15,7 +15,7 @@ module Database.CouchDB.Conduit.Internal.Doc (
 import              Prelude hiding (catch)
 
 import Control.Monad (void)
-import Control.Exception.Lifted (catch)
+import Control.Exception.Lifted (catch, throw)
 import Control.Monad.Trans.Class (lift)
 
 import Data.Maybe (fromJust)
@@ -23,7 +23,7 @@ import qualified Data.ByteString as B
 import qualified Data.ByteString.Lazy as BL
 import qualified Data.Text.Encoding as TE
 import qualified Data.Aeson as A
-import Data.Conduit (ResourceT, resourceThrow, ($$))
+import Data.Conduit (($$), ResourceT)
 import qualified Data.Conduit.Attoparsec as CA
 
 import qualified Network.HTTP.Conduit as H
@@ -42,7 +42,7 @@ couchRev :: MonadCouch m =>
        Path                 -- ^ Correct 'Path' with escaped fragments.
     -> ResourceT m Revision
 couchRev p = do
-    (H.Response _ hs _) <- couch HT.methodHead p [] [] 
+    (H.Response _ _ hs _) <- couch HT.methodHead p [] [] 
                                  (H.RequestBodyBS B.empty) protect' 
     return $ peekRev hs        
   where
@@ -57,7 +57,7 @@ couchRev' p =
     catch (couchRev p) handler404
   where
     handler404 (CouchHttpError 404 _) = return B.empty
-    handler404 e = lift $ resourceThrow e
+    handler404 e = throw e
 
 -- | Delete the given revision of the object.    
 couchDelete :: MonadCouch m => 
@@ -80,12 +80,12 @@ couchGetWith :: MonadCouch m =>
        -> Query                      -- ^ Query
        -> ResourceT m (Revision, a)
 couchGetWith f p q = do
-    H.Response _ _ bsrc <- couch HT.methodGet 
+    H.Response _ _ _ bsrc <- couch HT.methodGet 
                                  p [] q 
                                  (H.RequestBodyBS B.empty) protect'
-    j <- bsrc $$ CA.sinkParser A.json
-    A.String r <- lift $ either resourceThrow return $ extractField "_rev" j
-    o <- lift $ jsonToTypeWith f j 
+    j <- lift $ bsrc $$ CA.sinkParser A.json
+    A.String r <- either throw return $ extractField "_rev" j
+    o <- jsonToTypeWith f j 
     return (TE.encodeUtf8 r, o)
 
 -- | Put document, with given encoder
@@ -98,11 +98,11 @@ couchPutWith :: MonadCouch m =>
    -> a                     -- ^ The object to store.
    -> ResourceT m Revision
 couchPutWith f p r q val = do
-    H.Response _ _ bsrc <- couch HT.methodPut 
+    H.Response _ _ _ bsrc <- couch HT.methodPut 
                                  p (ifMatch r) q 
                                  (H.RequestBodyLBS $ f val) protect'
-    j <- bsrc $$ CA.sinkParser A.json
-    lift $ either resourceThrow return $ extractRev j
+    j <- lift $ bsrc $$ CA.sinkParser A.json
+    either throw return $ extractRev j
   where 
     ifMatch "" = []
     ifMatch rv = [("If-Match", rv)]

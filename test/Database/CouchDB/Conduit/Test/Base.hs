@@ -31,7 +31,7 @@ tests = mutuallyExclusive $ testGroup "Base" [
 -- | Just connect
 case_justConnect :: Assertion
 case_justConnect = runCouch def $ do
-    H.Response (HT.Status sc _) _h _bsrc <- couch HT.methodGet "" [] [] 
+    H.Response (HT.Status sc _) _ _h _bsrc <- couch HT.methodGet "" [] [] 
                     (H.RequestBodyBS B.empty) protect'
     liftIO $ sc @=? 200
 
