@@ -2,7 +2,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE FlexibleInstances #-}
-{-# LANGUAGE FlexibleContexts, RankNTypes, UndecidableInstances, GADTs #-}
+{-# LANGUAGE FlexibleContexts #-}
 
 -- | CouchDB connection. 
 
@@ -38,7 +38,8 @@ import Control.Monad.IO.Class (MonadIO, liftIO)
 import Control.Monad.Trans.Control (MonadBaseControl (..)) 
 
 
-import Data.Conduit (MonadResource, runResourceT, ResourceT)
+--import Data.Conduit (runResourceT, ResourceT(..))
+import Control.Monad.Trans.Resource (MonadResource(..), runResourceT, ResourceT)
 import Data.Generics (Typeable)
 import Data.Default (Default (def))
 import qualified Data.ByteString as B
@@ -131,6 +132,8 @@ class (MonadResource m, MonadBaseControl IO m) => MonadCouch m where
 instance (MonadResource m, MonadBaseControl IO m) => 
         MonadCouch (ReaderT CouchConnection m) where
     couchConnection = ask
+    
+--instance MonadResource m => MonadResource (ResourceT IO m)
 
 -- | A CouchDB Error.
 data CouchError 
@@ -154,8 +157,10 @@ instance Exception CouchError
 --       CouchConnection                            -- ^ Couch connection
 --    -> ResourceT (ReaderT CouchConnection m) a    -- ^ CouchDB actions
 --    -> m a
---runCouch :: forall m a . MonadIO m =>
---       CouchConnection -> ResourceT (ReaderT CouchConnection IO) a -> m a
+--runCouch :: (MonadIO m) =>
+--            CouchConnection
+--            -> ResourceT (ReaderT CouchConnection (ResourceT IO)) a 
+--            -> m a
 runCouch c = withCouchConnection c . runReaderT . runResourceT
 
 -- | Connect to a CouchDB server, call the supplied function, and then close 
