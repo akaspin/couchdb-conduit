@@ -17,7 +17,7 @@ import Control.Monad.Base (liftBase)
 --setupDB :: ByteString -> IO ()
 setupDB n = runCouch conn $ couchPutDB_ n
 
-tearDB :: ByteString -> IO ()
+--tearDB :: ByteString -> IO ()
 tearDB n = runCouch conn $ couchDeleteDB n
 
 -- | Connection connection. See readme

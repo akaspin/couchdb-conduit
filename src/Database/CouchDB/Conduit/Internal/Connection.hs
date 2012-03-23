@@ -2,7 +2,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE FlexibleInstances #-}
-{-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE FlexibleContexts, RankNTypes, UndecidableInstances, GADTs #-}
 
 -- | CouchDB connection. 
 
@@ -150,21 +150,23 @@ instance Exception CouchError
 --   'withCouchConnection', 'runReaderT' and 'runResourceT'.
 --  
 --   If you create your own instance of 'MonadCouch', use 'withCouchConnection'.  
-runCouch :: (MonadResource m, MonadBaseControl IO m) =>
-       CouchConnection                            -- ^ Couch connection
-    -> ResourceT (ReaderT CouchConnection m) a    -- ^ CouchDB actions
-    -> m a
-runCouch c = withCouchConnection c . runReaderT . runResourceT
+--runCouch :: (MonadIO m) =>
+--       CouchConnection                            -- ^ Couch connection
+--    -> ResourceT (ReaderT CouchConnection m) a    -- ^ CouchDB actions
+--    -> m a
+--runCouch :: forall m a . MonadIO m =>
+--       CouchConnection -> ResourceT (ReaderT CouchConnection IO) a -> m a
+runCouch c = liftIO . withCouchConnection c . runReaderT . runResourceT
 
 -- | Connect to a CouchDB server, call the supplied function, and then close 
 --   the connection.
 -- 
 -- > withCouchConnection def {couchDB = "db"} . runReaderT . runResourceT $ do
 -- >    ... -- actions
-withCouchConnection :: (MonadResource m, MonadBaseControl IO m) =>
-       CouchConnection              -- ^ Couch connection
-    -> (CouchConnection -> m a)     -- ^ Function to run
-    -> m a
+--withCouchConnection :: (MonadResource m, MonadBaseControl IO m) =>
+--       CouchConnection              -- ^ Couch connection
+--    -> (CouchConnection -> m a)     -- ^ Function to run
+--    -> m a
 withCouchConnection c@(CouchConnection _ _ mayMan  _ _ _) f = 
     case mayMan of
         -- Allocate manager with helper
