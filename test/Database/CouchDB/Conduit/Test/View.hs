@@ -15,7 +15,7 @@ import Control.Monad.IO.Class (liftIO)
 import Control.Applicative ((<$>), (<*>), empty)
 
 import qualified Data.ByteString as B
-import Data.ByteString.UTF8 (fromString)
+import Data.String.Conversions ((<>), cs)
 import Data.Aeson ((.:), (.=))
 import qualified Data.Aeson as A
 --import qualified Data.Aeson.Generic as AG
@@ -131,4 +131,4 @@ caseUpdateSeqAfter = bracket_
     doc n = T "doc" n $ show n
   
 docName :: Int -> B.ByteString
-docName n = fromString $ "doc" ++ show n    
+docName n = cs $ "doc" <> show n    

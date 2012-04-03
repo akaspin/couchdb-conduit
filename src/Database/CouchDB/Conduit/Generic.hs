@@ -51,7 +51,7 @@ module Database.CouchDB.Conduit.Generic (
 import Data.Generics (Data)
 import qualified    Data.Aeson as A
 import qualified    Data.Aeson.Generic as AG
-import Data.Conduit (Conduit(..), MonadResource)
+import Data.Conduit (Conduit, MonadResource)
 
 import Network.HTTP.Types (Query)
 

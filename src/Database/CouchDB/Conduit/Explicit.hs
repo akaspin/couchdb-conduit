@@ -52,7 +52,7 @@ module Database.CouchDB.Conduit.Explicit (
 ) where
 
 import qualified Data.Aeson as A
-import Data.Conduit (Conduit(..), MonadResource)
+import Data.Conduit (Conduit, MonadResource)
 
 import Network.HTTP.Types (Query)
 

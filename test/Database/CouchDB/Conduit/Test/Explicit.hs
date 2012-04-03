@@ -15,15 +15,15 @@ import Control.Applicative ((<$>), (<*>), empty)
 
 import Data.ByteString (ByteString)
 import Data.Aeson
-import Data.ByteString.UTF8 (fromString)
+import Data.String.Conversions ((<>), cs)
 import Database.CouchDB.Conduit
 import Database.CouchDB.Conduit.Explicit
 
 tests :: Test
 tests = mutuallyExclusive $ testGroup "Explicit" [
-    testCase "Just put-get-delete" case_justPutGet,
-    testCase "Mass flow" case_massFlow,
-    testCase "Mass Iter" case_massIter
+    testCase "Just put-get-delete" caseJustPutGet,
+    testCase "Mass flow" caseMassFlow,
+    testCase "Mass Iter" caseMassIter
     ]
     
 data TestDoc = TestDoc { kind :: String, intV :: Int, strV :: String } 
@@ -36,8 +36,8 @@ instance FromJSON TestDoc where
 instance ToJSON TestDoc where
    toJSON (TestDoc k i s) = object ["kind" .= k, "intV" .= i, "strV" .= s]
 
-case_justPutGet :: Assertion
-case_justPutGet = bracket_
+caseJustPutGet :: Assertion
+caseJustPutGet = bracket_
     setup teardown $
     runCouch conn $ do
         rev <- couchPut dbName "doc-just" "" [] $ TestDoc "doc" 1 "1"
@@ -46,25 +46,25 @@ case_justPutGet = bracket_
         liftIO $ rev' @=? rev''
         couchDelete dbName "doc-just" rev''
 
-case_massFlow :: Assertion
-case_massFlow = bracket_
+caseMassFlow :: Assertion
+caseMassFlow = bracket_
     setup teardown $
     runCouch conn $ do
         revs <- mapM (\n -> 
                 couchPut dbName (docn n) "" [] $ TestDoc "doc" n $ show n
             ) [1..100]
         liftIO $ length revs @=? 100
-        revs' <- mapM (\n -> couchRev dbName $ docn n) [1..100]
+        revs' <- mapM (couchRev dbName . docn) [1..100]
         liftIO $ revs @=? revs'
         liftIO $ length revs' @=? 100
         mapM_ (\(n,r) ->
             couchDelete dbName (docn n) r) $ zip [1..100] revs'
   where
-    docn n = fromString $ "doc-" ++ show (n :: Int)    
+    docn n = cs $ "doc-" <> show (n :: Int)    
 
 
-case_massIter :: Assertion
-case_massIter = bracket_
+caseMassIter :: Assertion
+caseMassIter = bracket_
     setup teardown $
     runCouch conn $ 
         mapM_ (\n -> do
@@ -79,7 +79,7 @@ case_massIter = bracket_
             couchDelete dbName (docn n) rev''
          ) [1..100]
   where
-    docn n = fromString $ "doc-" ++ show (n :: Int) 
+    docn n = cs $ "doc-" <> show (n :: Int) 
     
 setup :: IO ()
 setup = setupDB dbName
