@@ -38,6 +38,7 @@ library
                    http-types >= 0.6 && < 0.7,
                    lifted-base >= 0.1 && < 0.2,
                    monad-control >= 0.3 && < 0.4,
+                   resourcet,
                    string-conversions,
                    syb,
                    transformers >= 0.2 && < 0.4,

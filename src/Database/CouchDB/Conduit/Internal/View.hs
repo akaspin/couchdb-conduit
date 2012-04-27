@@ -5,7 +5,7 @@ module Database.CouchDB.Conduit.Internal.View where
 import Control.Exception.Lifted (throw)
 
 import qualified Data.Aeson as A
-import Data.Conduit (Conduit(..), MonadResource)
+import Data.Conduit (Conduit, MonadResource)
 import qualified Data.Conduit.List as CL (mapM)
 import Data.String.Conversions ((<>), cs)
 
