@@ -22,7 +22,7 @@ import qualified Data.ByteString as B
 import qualified Data.ByteString.Lazy as BL
 import qualified Data.Text.Encoding as TE
 import qualified Data.Aeson as A
-import Data.Conduit (($$),)
+import Data.Conduit (($$))
 import qualified Data.Conduit.Attoparsec as CA
 
 import qualified Network.HTTP.Conduit as H

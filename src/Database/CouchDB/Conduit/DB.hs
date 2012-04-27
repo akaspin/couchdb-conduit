@@ -26,8 +26,6 @@ import qualified Data.Aeson as A
 import qualified Network.HTTP.Conduit as H
 import qualified Network.HTTP.Types as HT
 
-
-
 import Database.CouchDB.Conduit.Internal.Connection 
             (MonadCouch(..), Path, mkPath)
 import Database.CouchDB.Conduit.LowLevel (couch, couch', protect, protect')

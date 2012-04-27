@@ -12,7 +12,7 @@ import Control.Monad (void)
 import Control.Exception.Lifted (catch)
 
 import qualified Data.ByteString as B
-import qualified Data.Text as T
+import Data.Text (Text)
 import qualified Data.Text.Encoding as TE
 import qualified Data.HashMap.Lazy as M
 import qualified Data.Aeson as A
@@ -69,7 +69,7 @@ stripObject (A.Object a) = a
 stripObject _ = M.empty 
 
 -- Extract views field or return empty map
-extractViews :: M.HashMap T.Text AT.Value -> M.HashMap T.Text AT.Value
+extractViews :: M.HashMap Text AT.Value -> M.HashMap Text AT.Value
 extractViews o = maybe M.empty stripObject $ M.lookup "views" o
 
 

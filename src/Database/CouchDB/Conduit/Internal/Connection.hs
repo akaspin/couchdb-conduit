@@ -1,8 +1,9 @@
-{-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE ConstraintKinds #-}
 
 -- | CouchDB connection. 
 
@@ -32,12 +33,9 @@ module Database.CouchDB.Conduit.Internal.Connection (
 import Control.Monad.Trans.Reader (ReaderT, ask, runReaderT)
 import Control.Exception (Exception)
 import Control.Monad.Trans.Class (lift)
-import Control.Monad.IO.Class (MonadIO)
-import Control.Monad.Trans.Control (MonadBaseControl (..))
+import Control.Monad.Trans.Resource (MonadBaseControl, MonadResourceBase, 
+        MonadResource, ResourceT, runResourceT)
  
-import Data.Conduit (MonadResource, MonadThrow, MonadUnsafeIO, 
-    ResourceT, runResourceT)
-
 import Data.Generics (Typeable)
 import Data.Default (Default (def))
 import qualified Data.ByteString as B
@@ -150,7 +148,7 @@ instance Exception CouchError
 --  
 --   If you create your own instance of 'MonadCouch' or use connection pool, 
 --   use 'withCouchConnection'.  
-runCouch :: (MonadThrow m, MonadUnsafeIO m, MonadIO m, MonadBaseControl IO m) =>
+runCouch :: (MonadResourceBase m) =>
        CouchConnection            -- ^ Couch connection
     -> ReaderT (H.Manager, CouchConnection) (ResourceT m) a 
                                   -- ^ Actions
