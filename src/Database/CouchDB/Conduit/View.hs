@@ -41,6 +41,8 @@ module Database.CouchDB.Conduit.View
     -- ** Keys
     -- $view_query_keys #view_query_keys#
     viewQpKey,
+    viewQpStartKey,
+    viewQpEndKey,
     viewQpKeys,
 
     -- ** Control
@@ -213,6 +215,21 @@ viewQpKey :: A.ToJSON a =>
        a                -- ^ Key 
     -> HT.QueryItem
 viewQpKey = viewQp "key"
+
+-- | Row key to start with.
+--   Shorthand for @viewQp "startkey"@
+viewQpStartKey :: A.ToJSON a =>
+       a                -- ^ Start Key value
+    -> HT.QueryItem
+viewQpStartKey = viewQp "startkey"
+
+-- | Row key to end with.
+--   Shorthand for @viewQp "endkey"@
+viewQpEndKey :: A.ToJSON a =>
+       a                -- ^ Start Key value
+    -> HT.QueryItem
+viewQpEndKey = viewQp "endkey"
+
 
 -- | Make @keys=...@ query parameter. 
 --   Shorthand for @viewQp \"keys\"@.
