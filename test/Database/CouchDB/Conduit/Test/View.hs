@@ -17,6 +17,7 @@ import Control.Applicative ((<$>), (<*>), empty)
 import qualified Data.ByteString as B
 import Data.String.Conversions ((<>), cs)
 import Data.Aeson ((.:), (.=))
+import qualified Data.HashMap.Strict as H
 import qualified Data.Aeson as A
 --import qualified Data.Aeson.Generic as AG
 import Data.Generics (Data, Typeable)
@@ -56,11 +57,14 @@ caseMakeParams = do
     let numP = viewQpInt "numP" 1
     let bsP = viewQpBS "bsP" "a"
     let arrP = viewQp "arrP" (["a", "b", "c"] :: [B.ByteString])
+    let tupleP = viewQp "tupleP" (1 :: Int, H.empty :: H.HashMap String Int)
     liftIO $ (
             ("numP", Just "1"),
             ("bsP", Just "\"a\""),
-            ("arrP", Just "[\"a\",\"b\",\"c\"]")) 
-            @=? (numP, bsP, arrP)
+            ("arrP", Just "[\"a\",\"b\",\"c\"]"),
+            ("tupleP", Just "[1,{}]")
+            ) 
+            @=? (numP, bsP, arrP, tupleP)
 
 caseBigValues :: Assertion
 caseBigValues = bracket_

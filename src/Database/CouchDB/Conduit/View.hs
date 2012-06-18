@@ -17,6 +17,7 @@ module Database.CouchDB.Conduit.View
 
     -- * View query parameters
     -- $view_query #view_query#
+    viewQpUnit,
     viewQp,
     viewQpBS,
     viewQpInt,
@@ -60,6 +61,7 @@ import qualified Data.ByteString as B
 import qualified Data.ByteString.Lazy as BL
 import qualified Data.ByteString.Char8 as BS8
 import qualified Data.HashMap.Lazy as M
+import qualified Data.HashMap.Strict as MS
 import qualified Data.Aeson as A
 import Data.Attoparsec
 
@@ -86,6 +88,11 @@ import Database.CouchDB.Conduit.LowLevel (couch, protect')
 -- because all options must be a proper URL encoded JSON, construction of 
 -- complex parameters can be very tedious. To simplify this, use following
 -- functions. 
+
+-- | Not query parameter. Returns empty 'MS.HashMap'. Aeson will convert 
+--   this to @\{\}@ (JSON unit). This useful for @startkey@ and @endkey@.
+viewQpUnit :: MS.HashMap B.ByteString Bool
+viewQpUnit = MS.empty
 
 -- | Make complex view query parameter.  
 --
