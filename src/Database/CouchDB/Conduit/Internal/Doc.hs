@@ -22,7 +22,7 @@ import qualified Data.ByteString as B
 import qualified Data.ByteString.Lazy as BL
 import qualified Data.Text.Encoding as TE
 import qualified Data.Aeson as A
-import Data.Conduit (($$))
+import Data.Conduit (($$+-))
 import qualified Data.Conduit.Attoparsec as CA
 
 import qualified Network.HTTP.Conduit as H
@@ -82,7 +82,7 @@ couchGetWith f p q = do
     H.Response _ _ _ bsrc <- couch HT.methodGet 
                                  p [] q 
                                  (H.RequestBodyBS B.empty) protect'
-    j <- bsrc $$ CA.sinkParser A.json
+    j <- bsrc $$+- CA.sinkParser A.json
     A.String r <- either throw return $ extractField "_rev" j
     o <- jsonToTypeWith f j 
     return (TE.encodeUtf8 r, o)
@@ -100,7 +100,7 @@ couchPutWith f p r q val = do
     H.Response _ _ _ bsrc <- couch HT.methodPut 
                                  p (ifMatch r) q 
                                  (H.RequestBodyLBS $ f val) protect'
-    j <- bsrc $$ CA.sinkParser A.json
+    j <- bsrc $$+- CA.sinkParser A.json
     either throw return $ extractRev j
   where 
     ifMatch "" = []

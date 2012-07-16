@@ -18,6 +18,7 @@ module Database.CouchDB.Conduit (
     -- * Document paths and revisions #path#
     Path,
     Revision,
+    mkPath,
     
     -- * CouchDB Connection #connection#
     CouchConnection,

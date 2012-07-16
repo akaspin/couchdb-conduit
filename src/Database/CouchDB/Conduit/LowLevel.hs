@@ -27,7 +27,7 @@ import qualified Data.Aeson as A
 import qualified Data.HashMap.Lazy as M
 import Data.String.Conversions ((<>), cs)
 
-import Data.Conduit (Source, ($$))
+import Data.Conduit (ResumableSource, ($$+-))
 import Data.Conduit.Attoparsec (sinkParser)
                         
 import qualified Network.HTTP.Conduit as H
@@ -36,7 +36,7 @@ import qualified Network.HTTP.Types as HT
 import Database.CouchDB.Conduit.Internal.Connection
 
 -- | CouchDB response
-type CouchResponse m = H.Response (Source m B.ByteString)
+type CouchResponse m = H.Response (ResumableSource m B.ByteString)
 
 -- | The most general method of accessing CouchDB.  This is a very thin wrapper 
 --   around 'H.http'.  Most of the time you should use one of the other access 
@@ -104,7 +104,7 @@ protect goodCodes h ~resp@(H.Response (HT.Status sc sm) _ _ bsrc)
     | sc == 304 = throw NotModified
     | sc `elem` goodCodes = h resp
     | otherwise = do
-        v <- catch (bsrc $$ sinkParser A.json)
+        v <- catch (bsrc $$+- sinkParser A.json)
                    (\(_::SomeException) -> return A.Null)
         throw $ CouchHttpError sc $ msg v
         where 

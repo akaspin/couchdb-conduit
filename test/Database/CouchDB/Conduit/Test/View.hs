@@ -16,9 +16,9 @@ import Control.Applicative ((<$>), (<*>), empty)
 
 import qualified Data.ByteString as B
 import Data.String.Conversions ((<>), cs)
+import qualified Data.Aeson as A
 import Data.Aeson ((.:), (.=))
 import qualified Data.HashMap.Strict as H
-import qualified Data.Aeson as A
 --import qualified Data.Aeson.Generic as AG
 import Data.Generics (Data, Typeable)
 import Data.Conduit
@@ -72,10 +72,10 @@ caseBigValues = bracket_
         couchPutDB_ db
         couchPutView db "mydesign" "myview"
                 "function(doc){emit(doc.intV, doc);}" Nothing
-        mapM_ (\n -> CCG.couchPut' db (docName n) [] $ doc n) [1..20]
+        mapM_ (\n -> CCG.couchPut' db (docName n) [] $ doc n) [1..200]
     )
     (tearDB db) $ runCouch conn $ do
-        res <- couchView' db "mydesign" "myview" [] $ 
+        res <- couchView_ db "mydesign" "myview" [] $ 
             (rowValue =$= CCG.toType) =$ CL.consume 
         mapM_ (\(a, b) -> liftIO $ a @=? doc b) $ zip res [1..20]
   where 
@@ -93,7 +93,7 @@ caseWithReduce = bracket_
                 $ Just "function(keys, values){return sum(values);}"
         mapM_ (\n -> CCG.couchPut' db (docName n) [] $ doc n) [1..20])
     (tearDB db) $ runCouch conn $ do
-        res <- couchView' db "mydesign" "myview" [] $
+        res <- couchView_ db "mydesign" "myview" [] $
             (rowValue =$= CCG.toType) =$ CL.consume
         liftIO $ res @=? [ReducedView 210]
   where
@@ -108,7 +108,7 @@ caseUpdateSeqTop = bracket_
                 "function(doc){emit(doc.intV, doc.intV);}" Nothing
         mapM_ (\n -> CCG.couchPut' db (docName n) [] $ doc n) [1..20])
     (tearDB db) $ runCouch conn $ do
-        res <- couchView' db "mydesign" "myview" 
+        res <- couchView_ db "mydesign" "myview" 
             [("update_seq",Just "true"),("key",Just "1")] $
             (rowValue =$= CCG.toType) =$ CL.consume
         liftIO $ res @=? [ReducedView 1]
@@ -124,7 +124,7 @@ caseUpdateSeqAfter = bracket_
                 "function(doc){emit([doc.intV,doc.intV], doc.intV);}" Nothing
         mapM_ (\n -> CCG.couchPut' db (docName n) [] $ doc n) [1..20])
     (tearDB db) $ runCouch conn $ do
-        res <- couchView' db "mydesign" "myview" 
+        res <- couchView_ db "mydesign" "myview" 
             [("keys",Just "[[0,0]]")] $
             (rowValue =$= CCG.toType) =$ CL.consume
         liftIO $ res @=? ([] :: [ReducedView])

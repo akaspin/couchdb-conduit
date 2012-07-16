@@ -1,5 +1,5 @@
 {-# LANGUAGE OverloadedStrings #-} 
-{-# LANGUAGE DeriveDataTypeable, ScopedTypeVariables #-} 
+{-# LANGUAGE DeriveDataTypeable, ScopedTypeVariables, NoMonomorphismRestriction #-} 
 
 -- | Higher-level functions to interact with CouchDB views.
 --   To manipulate views in design documents see 
@@ -10,9 +10,9 @@ module Database.CouchDB.Conduit.View
     -- * Acccessing views #run#
     -- $run
     couchView,
-    couchView',
+    couchView_,
     couchViewPost,
-    couchViewPost',
+    couchViewPost_,
     rowValue,
 
     -- * View query parameters
@@ -53,7 +53,6 @@ module Database.CouchDB.Conduit.View
 )
  where
 
-import Control.Applicative ((<|>))
 import Control.Exception.Lifted (throw)
 
 import Data.Monoid (mconcat)
@@ -65,10 +64,12 @@ import qualified Data.HashMap.Strict as MS
 import qualified Data.Aeson as A
 import Data.Attoparsec
 
-import Data.Conduit (MonadResource, 
-                        Source, Conduit, Sink, ($$), ($=), 
-                        sequenceSink, SequencedSinkResponse(..),
-                        )
+import qualified Data.Vector.Generic as V
+import qualified Data.Vector.Fusion.Stream as S
+
+import Data.Conduit (MonadResource, Source, Conduit, Sink, ($$), ($=), ($$+-))
+import Data.Conduit.Util (sourceState, SourceStateResult(..))
+                     
 import qualified Data.Conduit.List as CL
 import qualified Data.Conduit.Attoparsec as CA
 
@@ -287,7 +288,7 @@ couchView db design view q = do
             (viewPath db design view)
             [] q 
             (H.RequestBodyBS B.empty) protect'
-    return $ bsrc $= conduitCouchView
+    bsrc $$+- conduitRows
 
 -- | Brain-free version of 'couchView'. Takes 'Sink' to consume response.
 --
@@ -299,14 +300,14 @@ couchView db design view q = do
 -- >     -- ... Or extract row value and consume
 -- >     res <- couchView' "mydb" "mydesign" "myview" [] $ 
 -- >                        rowValue =$ CL.consume
-couchView' :: MonadCouch m =>
+couchView_ :: MonadCouch m =>
        Path                 -- ^ Database
     -> Path                 -- ^ Design document
     -> Path                 -- ^ View name
     -> HT.Query             -- ^ Query parameters
     -> Sink A.Object m a    -- ^ Sink for handle view rows.
     -> m a
-couchView' db design view q sink = do
+couchView_ db design view q sink = do
     raw <- couchView db design view q
     raw $$ sink
 
@@ -332,12 +333,12 @@ couchViewPost db design view q ks = do
             [] 
             q 
             (H.RequestBodyLBS mkPost) protect'
-    return $ bsrc $= conduitCouchView
+    bsrc $$+- conduitRows
   where
     mkPost = A.encode $ A.object ["keys" A..= ks]
 
 -- | Brain-free version of 'couchViewPost'. Takes 'Sink' to consume response.
-couchViewPost' :: (MonadCouch m, A.ToJSON a) =>
+couchViewPost_ :: (MonadCouch m, A.ToJSON a) =>
        Path                 -- ^ Database
     -> Path                 -- ^ Design document
     -> Path                 -- ^ View name
@@ -345,7 +346,7 @@ couchViewPost' :: (MonadCouch m, A.ToJSON a) =>
     -> a                    -- ^ View @keys@. Must be list or cortege.
     -> Sink A.Object m a    -- ^ Sink for handle view rows.
     -> m a
-couchViewPost' db design view q ks sink = do
+couchViewPost_ db design view q ks sink = do
     raw <- couchViewPost db design view q ks
     raw $$ sink
 
@@ -364,58 +365,28 @@ rowValue = CL.mapM (\v -> case M.lookup "value" v of
 viewPath :: Path -> Path -> Path -> Path
 viewPath db design view = mkPath [db, "_design", design, "_view", view]
 
------------------------------------------------------------------------------
--- Internal view parser
------------------------------------------------------------------------------
+-- | Use an immutable vector as a source.
+sourceVector :: (Monad m, V.Vector v a) => v a -> Source m a
+sourceVector vec = sourceState (V.stream vec) f
+    where f stream | S.null stream = return StateClosed
+                   | otherwise = return $ StateOpen 
+                        (S.tail stream) (S.head stream)
 
-conduitCouchView :: MonadResource m => Conduit B.ByteString m A.Object
-conduitCouchView = sequenceSink () $ \() -> do
-    b <- CA.sinkParser viewStart
-    if b then return $ StartConduit viewLoop
-         else return Stop
-
-viewLoop :: MonadResource m => Conduit B.ByteString m A.Object   
-viewLoop = sequenceSink False $ \isLast -> 
-    if isLast then return Stop
-    else do 
-        v <- CA.sinkParser (A.json <?> "json object")
-        vobj <- case v of
-            (A.Object o) -> return o
-            _ -> throw $ 
-                 CouchInternalError "view entry is not an object"
-        res <- CA.sinkParser (commaOrClose <?> "comma or close")
-        case res of
-            Comma -> return $ Emit False [vobj]
-            CloseBracket -> return $ Emit True [vobj]
-
-data CommaOrCloseBracket = Comma | CloseBracket
-
-commaOrClose :: Parser CommaOrCloseBracket
-commaOrClose = do
-    skipWhile (\c -> c /= 44 && c /= 93) <?> 
-            "Checking for next comma"
-    w <- anyWord8
-    if w == 44 then return Comma else return CloseBracket
-
--- determine view
-viewStart :: Parser Bool
-viewStart = do
-    _ <- string "{" 
-    _ <- option "" $ string "\"total_rows\":" 
-    option () $ skipWhile (\x -> x >= 48 && x <= 57)
-    _ <- option "" $ string ",\"update_seq\":" 
-    option () $ skipWhile (\x -> x >= 48 && x <= 57)
-    _ <- option "" $ string ",\"offset\":"
-    option () $ skipWhile (\x -> x >= 48 && x <= 57)
-    _ <- option "" $ string ","
-    _ <- string "\"rows\":["
-    (string "]}" <|> (do
-        r <- string "]"
-        _ <- option "" $ string ",\"update_seq\":"
-        option () $ skipWhile (\x -> x >= 48 && x <= 57)
-        _ <- option "" $ string "}"
-        return r) 
-        >> return False) <|> return True
+-- | Extra
+conduitRows :: MonadResource m => Sink BS8.ByteString m (Source m A.Object)
+--(Monad m1, Control.Monad.Trans.Resource.MonadThrow m) =>
+--Data.Conduit.Internal.Pipe BS8.ByteString BS8.ByteString o u m (Source m1 A.Object)
+conduitRows = do 
+    raw <- CA.sinkParser (A.json <?> "json object")
+    rows <- case raw of
+        (A.Object raw') -> case M.lookup "rows" raw' of
+            (Just (A.Array r)) -> return r
+            _ -> return V.empty
+        _ -> throw $ CouchInternalError "view entry is not an object"
+    return $ sourceVector rows $= CL.map valToObj
+  where
+    valToObj (A.Object o) = o
+    valToObj _ = throw $ CouchInternalError "row is not object"
 
     
     
