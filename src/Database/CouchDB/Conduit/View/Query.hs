@@ -1,4 +1,4 @@
-{-# LANGUAGE OverloadedStrings, ExistentialQuantification #-} 
+{-# LANGUAGE OverloadedStrings, ExistentialQuantification, BangPatterns #-} 
 
 -- | CouchDB View Query options.
 --
@@ -21,6 +21,7 @@ import qualified Data.ByteString as B
 import qualified Data.HashMap.Strict as MS
 import qualified Data.Aeson as A
 import Data.String.Conversions (cs, (<>))
+import qualified Data.List as L
 
 import qualified Network.HTTP.Types as HT
 
@@ -56,6 +57,11 @@ data CouchQP =
         -- ^ 'Bool' query parameter.
         --
         -- > ...?param=true
+        
+    | QPDescending
+        -- ^ Reverse rows output.
+        --
+        -- > ...?descending=true 
     
     | QPLimit Int
         -- ^ Limit rows. Use @Zero (0)@ to omit.
@@ -137,24 +143,20 @@ data CouchQP =
         -- ^ Document id to end with.
         --
         -- > ...?endkey_docid=...
-        
+
 -- | Make CouchDB query options.
 mkQuery :: 
-       Bool         -- ^ Descending sort order. On @True@ adds 
-                    --   @descending@ to query. Also swaps 
-                    --   @start_key@ and @end_key@ parameters            
-    -> [CouchQP]    -- ^ Query options.
+       [CouchQP]    -- ^ Query options.
     -> HT.Query
-mkQuery desc = 
-    parseDesc desc . concatMap parseqp
+mkQuery qs = 
+    concatMap parseqp qs
   where
-    parseDesc True = (("descending", Just "true"):)
-    parseDesc False = id
     parseqp (QPComplex n v) = [(n, Just $ cs . A.encode $ v)]  
     parseqp (QPBS n v) = [(n, Just $ "\"" <> v <> "\"")]  
     parseqp (QPInt n v) = [(n, Just $ cs . show $ v)]  
     parseqp (QPBool n True) = [(n, Just "true")]  
     parseqp (QPBool n False) = [(n, Just "false")]  
+    parseqp QPDescending = boolqp "descending" True  
     parseqp (QPLimit v) = intZeroQp "limit" v  
     parseqp (QPSkip v) = intZeroQp "skip" v
     parseqp (QPStale True) = [("stale", Just "ok")]
@@ -180,7 +182,13 @@ mkQuery desc =
     intZeroQp _ 0 = []
     intZeroQp n v = parseqp $ QPInt n v
     -- | Descending dependent param
-    descDep a b = if desc then b else a
+    descDep a b = if isDesc then b else a
+    
+    !isDesc = case L.find isDesc' qs of
+        Nothing -> False
+        _ -> True
+    isDesc' QPDescending = True 
+    isDesc' _ = False
 
 
 
