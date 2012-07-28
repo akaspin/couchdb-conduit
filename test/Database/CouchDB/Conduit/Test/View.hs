@@ -18,8 +18,6 @@ import qualified Data.ByteString as B
 import Data.String.Conversions ((<>), cs)
 import qualified Data.Aeson as A
 import Data.Aeson ((.:), (.=))
-import qualified Data.HashMap.Strict as H
---import qualified Data.Aeson.Generic as AG
 import Data.Generics (Data, Typeable)
 import Data.Conduit
 import qualified Data.Conduit.List as CL
@@ -32,7 +30,6 @@ import Database.CouchDB.Conduit.Design
 
 tests :: Test
 tests = mutuallyExclusive $ testGroup "View" [
-    testCase "Params" caseMakeParams,
     testCase "Big values parsing" caseBigValues,
     testCase "With reduce" caseWithReduce,
     testCase "update_seq before rows" caseUpdateSeqTop,
@@ -51,20 +48,6 @@ instance A.FromJSON T where
    
 instance A.ToJSON T where
    toJSON (T k i s) = A.object ["kind" .= k, "intV" .= i, "strV" .= s]
-
-caseMakeParams :: Assertion
-caseMakeParams = do
-    let numP = viewQpInt "numP" 1
-    let bsP = viewQpBS "bsP" "a"
-    let arrP = viewQp "arrP" (["a", "b", "c"] :: [B.ByteString])
-    let tupleP = viewQp "tupleP" (1 :: Int, H.empty :: H.HashMap String Int)
-    liftIO $ (
-            ("numP", Just "1"),
-            ("bsP", Just "\"a\""),
-            ("arrP", Just "[\"a\",\"b\",\"c\"]"),
-            ("tupleP", Just "[1,{}]")
-            ) 
-            @=? (numP, bsP, arrP, tupleP)
 
 caseBigValues :: Assertion
 caseBigValues = bracket_
