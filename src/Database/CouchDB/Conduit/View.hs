@@ -29,7 +29,6 @@ import qualified Data.ByteString.Char8 as BS8
 import qualified Data.Text as T
 import qualified Data.HashMap.Lazy as M
 import qualified Data.Aeson as A
-import Data.String.Conversions (cs, (<>))
 import Data.Attoparsec
 
 import qualified Data.Vector.Generic as V
@@ -155,11 +154,8 @@ rowDoc = rowField "doc"
 
 -- | Extract field from view row
 rowField :: Monad m => T.Text -> Conduit A.Object m A.Value
-rowField f = CL.mapM (\v -> case M.lookup f v of
-            (Just o) -> return o
-            _ -> throw $ CouchInternalError $ 
-                "View row does not contain \"" <> cs f <> "\": " <> cs (show v)
-            ) 
+rowField f = CL.mapMaybe (M.lookup f) 
+
 -----------------------------------------------------------------------------
 -- Internal
 -----------------------------------------------------------------------------
@@ -177,8 +173,6 @@ sourceVector vec = sourceState (V.stream vec) f
 
 -- | Extra
 conduitRows :: MonadResource m => Sink BS8.ByteString m (Source m A.Object)
---(Monad m1, Control.Monad.Trans.Resource.MonadThrow m) =>
---Data.Conduit.Internal.Pipe BS8.ByteString BS8.ByteString o u m (Source m1 A.Object)
 conduitRows = do 
     raw <- CA.sinkParser (A.json <?> "json object")
     rows <- case raw of
