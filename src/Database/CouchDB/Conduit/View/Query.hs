@@ -81,8 +81,9 @@ data CouchQP =
         -- > ...?stale=update_after
     
     | forall a . A.ToJSON a => QPKey a
-        -- ^ @key=...@ query parameter.
-        -- > key=...
+        -- ^ @key@ query parameter.
+        --
+        -- > ...?key=...
         
     | forall a . A.ToJSON a => QPStartKey a
         -- ^ Row key to start with. Becomes @endkey@ if @descending@ turned on. 
