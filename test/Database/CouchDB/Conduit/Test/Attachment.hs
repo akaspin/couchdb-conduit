@@ -25,6 +25,7 @@ tests :: Test
 tests = mutuallyExclusive $ testGroup "Attachment"
         [ testCase "Just put-get-delete" caseJustPutGet
         , testCase "Just put-delete-get" caseJustPutDeleteGet
+        , testCase "Just put-get-with-slashes" caseJustPutGetSlashes
         ]
 
 data TestDoc = TestDoc { kind :: String, intV :: Int, strV :: String }
@@ -43,6 +44,29 @@ caseJustPutGet = bracket_
       (content, ctype) <- couchGetAttach dbName "doc-just" "gandalf.html"
       liftIO $ content @=? testContent
       liftIO $ ctype @=? testContentType
+
+
+caseJustPutGetSlashes :: Assertion
+caseJustPutGetSlashes = bracket_
+    setup teardown $
+    runCouch conn $ do
+      let testContent1 = "Gandalf Gandalf Gandalf"
+      let testContent2 = "Gandalf Bilbo Bilbo"
+      let testContentType = "text/html"
+
+      rev <- couchPut dbName "doc-just" "" [] $ TestDoc "doc" 1 "1"
+      rev' <- couchPutAttach dbName "doc-just" "src/gandalf.html" rev
+              testContentType testContent1
+      rev'' <- couchPutAttach dbName "doc-just" "src%2fgandalf.html" rev'
+               testContentType testContent2
+
+      (content1, ctype1) <- couchGetAttach dbName "doc-just" "src/gandalf.html"
+      (content2, ctype2) <- couchGetAttach dbName "doc-just" "src%2fgandalf.html"
+
+      liftIO $ content1 @=? testContent1
+      liftIO $ ctype1 @=? testContentType
+      liftIO $ content2 @=? testContent2
+      liftIO $ ctype2 @=? testContentType
 
 caseJustPutDeleteGet :: Assertion
 caseJustPutDeleteGet = bracket_
