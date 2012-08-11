@@ -13,6 +13,7 @@ import Database.CouchDB.Conduit.LowLevel (couch, protect')
 import qualified Network.HTTP.Conduit as H
 import qualified Network.HTTP.Types as HT
 import qualified Data.ByteString as B
+import qualified Data.ByteString.Lazy as BL
 
 import qualified Data.Text.Encoding as TE
 
@@ -30,14 +31,14 @@ couchPutAttach :: MonadCouch m =>
                   -> Path           -- ^ Attachment
                   -> Revision       -- ^ Document revision
                   -> B.ByteString   -- ^ Attachent content type
-                  -> B.ByteString   -- ^ Attachment content
+                  -> BL.ByteString  -- ^ Attachment content
                   -> m Revision
 couchPutAttach db doc att rev contentType content =
   do H.Response _ _ _ bsrc <- couch HT.methodPut
                               (mkPath [db,doc,att])
                               [(HT.hContentType, contentType)]
                               (if rev /= "" then [("rev", Just rev)] else [])
-                              (H.RequestBodyBS content)
+                              (H.RequestBodyLBS content)
                               protect'
      j <- bsrc $$+- CA.sinkParser A.json
      A.String r <- either throw return $ extractField "rev" j
@@ -49,7 +50,7 @@ couchGetAttach :: MonadCouch m =>
                   Path             -- ^ Database
                   -> Path           -- ^ Document
                   -> Path           -- ^ Attachment
-                  -> m (B.ByteString, B.ByteString) -- ^ (Content, Content-type)
+                  -> m (BL.ByteString, B.ByteString) -- ^ (Content, Content-type)
 couchGetAttach db doc att =
   do H.Response _ _ hs bsrc <- couch HT.methodGet
                                (mkPath [db,doc,att])
@@ -59,7 +60,7 @@ couchGetAttach db doc att =
                                protect'
      body <- bsrc $$+- CL.consume
      let contentType = peekContentType hs
-     return (B.concat body, contentType)
+     return (BL.fromChunks body, contentType)
   where
     peekVal a b = fromJust $ lookup a b
     peekContentType a = peekVal "Content-Type" a
