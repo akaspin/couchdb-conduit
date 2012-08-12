@@ -1,31 +1,38 @@
-{-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE DeriveDataTypeable #-}
+{-# LANGUAGE OverloadedStrings  #-}
 
 {-# OPTIONS_GHC -fno-warn-unused-binds #-}
 
 module Database.CouchDB.Conduit.Test.Attachment (tests) where
 
-import Test.Framework (testGroup, mutuallyExclusive, Test)
-import Test.Framework.Providers.HUnit (testCase)
-import Test.HUnit (Assertion, (@=?))
-import Database.CouchDB.Conduit.Test.Util
+import           Test.Framework                      (Test, mutuallyExclusive,
+                                                      testGroup)
+import           Test.Framework.Providers.HUnit      (testCase)
+import           Test.HUnit                          (Assertion, (@=?))
 
-import Control.Exception.Lifted (bracket_)
-import Control.Monad.IO.Class (liftIO)
+import           Control.Exception.Lifted            (bracket_)
+import           Control.Monad ()
+import           Control.Monad.IO.Class              (liftIO)
 
-import Data.ByteString (ByteString)
+import qualified Data.ByteString                     as B
+import qualified Data.ByteString.Lazy                as BL
 
-import Database.CouchDB.Conduit
-import Database.CouchDB.Conduit.Attachment
-import Database.CouchDB.Conduit.Generic
-
-import Data.Generics (Data, Typeable)
+import           Data.Conduit
+import qualified Data.Conduit.List                   as CL
+import           Data.Generics                       (Data, Typeable)
+import           Database.CouchDB.Conduit
+import           Database.CouchDB.Conduit.Attachment
+import           Database.CouchDB.Conduit.Generic
+import           Database.CouchDB.Conduit.Test.Util
+import Data.Text (Text)
+import qualified Data.Text.Encoding                           as TE
 
 tests :: Test
 tests = mutuallyExclusive $ testGroup "Attachment"
         [ testCase "Just put-get-delete" caseJustPutGet
         , testCase "Just put-delete-get" caseJustPutDeleteGet
         , testCase "Just put-get-with-slashes" caseJustPutGetSlashes
+        , testCase "multi-byte" caseMultiByte
         ]
 
 data TestDoc = TestDoc { kind :: String, intV :: Int, strV :: String }
@@ -39,10 +46,11 @@ caseJustPutGet = bracket_
       let testContentType = "text/html"
 
       rev <- couchPut dbName "doc-just" "" [] $ TestDoc "doc" 1 "1"
-      _ <- couchPutAttach dbName "doc-just" "gandalf.html" rev
+      _ <- couchSimplePutAttach dbName "doc-just" "gandalf.html" rev
               testContentType testContent
-      (content, ctype) <- couchGetAttach dbName "doc-just" "gandalf.html"
-      liftIO $ content @=? testContent
+      (src, ctype) <- couchGetAttach dbName "doc-just" "gandalf.html"
+      content <- src $$+- CL.consume
+      liftIO $ (BL.fromChunks content) @=? testContent
       liftIO $ ctype @=? testContentType
 
 
@@ -50,22 +58,28 @@ caseJustPutGetSlashes :: Assertion
 caseJustPutGetSlashes = bracket_
     setup teardown $
     runCouch conn $ do
-      let testContent1 = "Gandalf Gandalf Gandalf"
-      let testContent2 = "Gandalf Bilbo Bilbo"
+      let testContent1 = "Gandalf Gandalf Gandalf" ::B.ByteString
+      let testContent2 = "Gandalf Bilbo Bilbo" ::B.ByteString
       let testContentType = "text/html"
+
+      let contentSource1 = CL.sourceList [testContent1]
+      let contentSource2 = CL.sourceList [testContent2]
 
       rev <- couchPut dbName "doc-just" "" [] $ TestDoc "doc" 1 "1"
       rev' <- couchPutAttach dbName "doc-just" "src/gandalf.html" rev
-              testContentType testContent1
+              testContentType (fromIntegral $ B.length testContent1) contentSource1
       rev'' <- couchPutAttach dbName "doc-just" "src%2fgandalf.html" rev'
-               testContentType testContent2
+               testContentType (fromIntegral $ B.length testContent2) contentSource2
 
-      (content1, ctype1) <- couchGetAttach dbName "doc-just" "src/gandalf.html"
-      (content2, ctype2) <- couchGetAttach dbName "doc-just" "src%2fgandalf.html"
+      (src1, ctype1) <- couchGetAttach dbName "doc-just" "src/gandalf.html"
+      (src2, ctype2) <- couchGetAttach dbName "doc-just" "src%2fgandalf.html"
 
-      liftIO $ content1 @=? testContent1
+      content1 <- src1 $$+- CL.consume
+      content2 <- src2 $$+- CL.consume
+
+      liftIO $ (B.concat content1) @=? testContent1
       liftIO $ ctype1 @=? testContentType
-      liftIO $ content2 @=? testContent2
+      liftIO $ (B.concat content2) @=? testContent2
       liftIO $ ctype2 @=? testContentType
 
 caseJustPutDeleteGet :: Assertion
@@ -76,11 +90,27 @@ caseJustPutDeleteGet = bracket_
       let testContentType = "text/html"
 
       rev <- couchPut dbName "doc-just" "" [] $ TestDoc "doc" 1 "1"
-      rev' <- couchPutAttach dbName "doc-just" "frodo.html" rev
+      rev' <- couchSimplePutAttach dbName "doc-just" "frodo.html" rev
               testContentType testContent
       rev'' <- couchDelAttach dbName "doc-just" "frodo.html" rev'
       rev''' <- couchRev dbName "doc-just"
       liftIO $ rev'' @=? rev'''
+
+
+caseMultiByte :: Assertion
+caseMultiByte = bracket_
+    setup teardown $
+    runCouch conn $ do
+      let testContent = "Гэндальф Гэндальф Гэндальф" ::Text
+      let testContentType = "text/html"
+
+      rev <- couchPut dbName "doc-just" "" [] $ TestDoc "doc" 1 "1"
+      _ <- couchSimplePutAttach dbName "doc-just" "gandalf.html" rev
+              (testContentType) (BL.fromChunks [TE.encodeUtf8 testContent])
+      (src, ctype) <- couchGetAttach dbName "doc-just" "gandalf.html"
+      content <- src $$+- CL.consume
+      liftIO $ ( TE.decodeUtf8 $ B.concat content) @=? testContent
+      liftIO $ ctype @=? testContentType
 
 
 setup :: IO ()
@@ -88,5 +118,5 @@ setup = setupDB dbName
 teardown :: IO ()
 teardown = tearDB dbName
 
-dbName :: ByteString
+dbName :: B.ByteString
 dbName = "cdbc_test_attachment"
