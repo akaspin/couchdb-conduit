@@ -1,5 +1,5 @@
 name:           couchdb-conduit
-version:        0.10.2
+version:        0.10.3
 cabal-version:  >= 1.8
 build-type:     Simple
 stability:      Testing
@@ -55,7 +55,8 @@ library
                     Database.CouchDB.Conduit.Implicit,
                     Database.CouchDB.Conduit.LowLevel,
                     Database.CouchDB.Conduit.View,
-                    Database.CouchDB.Conduit.View.Query
+                    Database.CouchDB.Conduit.View.Query,
+                    Database.CouchDB.Conduit.Attachment
   other-modules:    
                     Database.CouchDB.Conduit.Internal.Doc,
                     Database.CouchDB.Conduit.Internal.Parser,
