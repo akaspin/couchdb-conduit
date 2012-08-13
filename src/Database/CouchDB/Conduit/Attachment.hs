@@ -75,7 +75,15 @@ couchDeleteAttach :: MonadCouch m =>
     -> ByteString       -- ^ Attachment path
     -> Revision         -- ^ Document revision
     -> m Revision
-couchDeleteAttach = undefined
+couchDeleteAttach db doc att rev = do
+    Response _ _ _ bsrc <- couch HT.methodDelete
+            (attachPath db doc att)
+            []
+            [("rev", Just rev)]
+            (RequestBodyBS "")
+            protect'
+    j <- bsrc $$+- CA.sinkParser A.json
+    either throw return $ extractRev j
 
 ------------------------------------------------------------------------------
 -- Internal
