@@ -17,13 +17,22 @@ module Database.CouchDB.Conduit.Attachment (
     couchDeleteAttach
 ) where
 
-import Data.ByteString (ByteString)
-import Data.Conduit (ResumableSource)
+import Control.Exception.Lifted (throw)
 
-import Network.HTTP.Conduit (RequestBody(..))
+import Data.ByteString (ByteString)
+import Data.ByteString.Char8 (split, intercalate)
+import qualified Data.Aeson as A
+
+import Data.Conduit (ResumableSource, ($$+-))
+import qualified Data.Conduit.Attoparsec as CA
+
+import Network.HTTP.Conduit (RequestBody(..), Response(..))
+import qualified Network.HTTP.Types as HT
 
 import Database.CouchDB.Conduit.Internal.Connection 
-        (MonadCouch (..), Path, Revision)
+            (MonadCouch (..), Path, Revision, mkPath)
+import Database.CouchDB.Conduit.Internal.Parser (extractField, extractRev)
+import Database.CouchDB.Conduit.LowLevel (couch, protect')
 
 -- | Get document attachment and @Content-Type@.
 couchGetAttach :: MonadCouch m =>
@@ -42,7 +51,15 @@ couchPutAttach :: MonadCouch m =>
     -> ByteString       -- ^ Attacment @Content-Type@
     -> RequestBody m    -- ^ Attachment body
     -> m Revision
-couchPutAttach = undefined
+couchPutAttach db doc att rev contentType body = do
+    Response _ _ _ bsrc <- couch HT.methodPut
+            (attachPath db doc att)
+            [(HT.hContentType, contentType)]
+            [("rev", Just rev) | rev /= ""]
+            body
+            protect'
+    j <- bsrc $$+- CA.sinkParser A.json
+    either throw return $ extractRev j
 
 -- | Delete document attachment
 couchDeleteAttach :: MonadCouch m =>
@@ -52,3 +69,14 @@ couchDeleteAttach :: MonadCouch m =>
     -> Revision         -- ^ Document revision
     -> m Revision
 couchDeleteAttach = undefined
+
+------------------------------------------------------------------------------
+-- Internal
+------------------------------------------------------------------------------
+
+-- | Make normalized attachment path
+attachPath :: Path -> Path -> ByteString -> Path
+attachPath db doc att = 
+    mkPath $ db : doc : attP
+  where
+    attP = split '/' att
