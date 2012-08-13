@@ -3,6 +3,7 @@
 module Database.CouchDB.Conduit.Attachment
        ( couchPutAttach
        , couchSimplePutAttach
+       , couchLowPutAttach
        , couchGetAttach
        , couchDelAttach) where
 
@@ -31,13 +32,16 @@ import qualified Data.Conduit.Attoparsec                      as CA
 import qualified Data.Conduit.List                            as CL
 import           Database.CouchDB.Conduit.Internal.Parser
 
+
+
+
 mkAttachPath :: [Path]  -- ^ Path fragments be escaped.
                 -> Path -- ^ Attachment path (not be escaped)
                 -> Path
 mkAttachPath paths att = mkPath (paths ++ attPath)
   where attPath = B.split 0x2F att -- 0x2F == '/'
 
--- | Upload attachment using strict bytestring as content.
+-- | Upload attachment using lazy bytestring as content.
 couchSimplePutAttach :: MonadCouch m =>
                   Path             -- ^ Database
                   -> Path           -- ^ Document
@@ -47,15 +51,8 @@ couchSimplePutAttach :: MonadCouch m =>
                   -> BL.ByteString  -- ^ Attachment content
                   -> m Revision
 couchSimplePutAttach db doc att rev contentType content =
-  do H.Response _ _ _ bsrc <- couch HT.methodPut
-                              (mkAttachPath [db,doc] att)
-                              [(HT.hContentType, contentType)]
-                              (if rev /= "" then [("rev", Just rev)] else [])
-                              (H.RequestBodyLBS content)
-                              protect'
-     j <- bsrc $$+- CA.sinkParser A.json
-     A.String r <- either throw return $ extractField "rev" j
-     return $ TE.encodeUtf8 r
+  do let rBody = H.RequestBodyLBS content
+     couchLowPutAttach db doc att rev contentType rBody
 
 
 -- | Upload attachment using conduit source as content.
@@ -70,17 +67,32 @@ couchPutAttach :: MonadCouch m =>
                   -> m Revision
 couchPutAttach db doc att rev contentType len content =
   do let builderContent = mapOutput (BLB.fromByteString) content
-     H.Response _ _ _ bsrc <- couch HT.methodPut
+     let rBody = H.RequestBodySource (fromIntegral len) builderContent
+     couchLowPutAttach db doc att rev contentType rBody
+
+
+
+couchLowPutAttach :: MonadCouch m =>
+                  Path                 -- ^ Database
+                  -> Path               -- ^ Document
+                  -> Path               -- ^ Attachment
+                  -> Revision           -- ^ Document revision
+                  -> B.ByteString       -- ^ Attachent content type
+                  -> (H.RequestBody m)  -- ^ Attachment content
+                  -> m Revision
+couchLowPutAttach db doc att rev contentType content =
+  do H.Response _ _ _ bsrc <- couch HT.methodPut
                               (mkAttachPath [db,doc] att)
                               [(HT.hContentType, contentType)]
                               (if rev /= "" then [("rev", Just rev)] else [])
-                              (H.RequestBodySource (fromIntegral len) builderContent)
+                              content
                               protect'
      j <- bsrc $$+- CA.sinkParser A.json
      A.String r <- either throw return $ extractField "rev" j
      return $ TE.encodeUtf8 r
 
 
+-- | Get attachment.
 couchGetAttach :: MonadCouch m =>
                   Path             -- ^ Database
                   -> Path           -- ^ Document

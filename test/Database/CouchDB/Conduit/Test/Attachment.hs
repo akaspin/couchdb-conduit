@@ -68,7 +68,7 @@ caseJustPutGetSlashes = bracket_
       rev <- couchPut dbName "doc-just" "" [] $ TestDoc "doc" 1 "1"
       rev' <- couchPutAttach dbName "doc-just" "src/gandalf.html" rev
               testContentType (fromIntegral $ B.length testContent1) contentSource1
-      rev'' <- couchPutAttach dbName "doc-just" "src%2fgandalf.html" rev'
+      _ <- couchPutAttach dbName "doc-just" "src%2fgandalf.html" rev'
                testContentType (fromIntegral $ B.length testContent2) contentSource2
 
       (src1, ctype1) <- couchGetAttach dbName "doc-just" "src/gandalf.html"
@@ -81,6 +81,7 @@ caseJustPutGetSlashes = bracket_
       liftIO $ ctype1 @=? testContentType
       liftIO $ (B.concat content2) @=? testContent2
       liftIO $ ctype2 @=? testContentType
+
 
 caseJustPutDeleteGet :: Assertion
 caseJustPutDeleteGet = bracket_
