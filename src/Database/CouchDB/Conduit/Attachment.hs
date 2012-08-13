@@ -20,7 +20,7 @@ module Database.CouchDB.Conduit.Attachment (
 import Control.Exception.Lifted (throw)
 
 import Data.ByteString (ByteString)
-import Data.ByteString.Char8 (split, intercalate)
+import Data.ByteString.Char8 (split)
 import qualified Data.Aeson as A
 
 import Data.Conduit (ResumableSource, ($$+-))
@@ -31,7 +31,7 @@ import qualified Network.HTTP.Types as HT
 
 import Database.CouchDB.Conduit.Internal.Connection 
             (MonadCouch (..), Path, Revision, mkPath)
-import Database.CouchDB.Conduit.Internal.Parser (extractField, extractRev)
+import Database.CouchDB.Conduit.Internal.Parser (extractRev)
 import Database.CouchDB.Conduit.LowLevel (couch, protect')
 
 -- | Get document attachment and @Content-Type@.
