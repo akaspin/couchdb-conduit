@@ -19,10 +19,10 @@ module Database.CouchDB.Conduit.Attachment (
 
 import Control.Exception.Lifted (throw)
 
+import Data.Maybe (fromMaybe)
 import Data.ByteString (ByteString)
 import Data.ByteString.Char8 (split)
 import qualified Data.Aeson as A
-
 import Data.Conduit (ResumableSource, ($$+-))
 import qualified Data.Conduit.Attoparsec as CA
 
@@ -40,7 +40,14 @@ couchGetAttach :: MonadCouch m =>
     -> Path             -- ^ Document
     -> ByteString       -- ^ Attachment path
     -> m (ResumableSource m ByteString, ByteString)
-couchGetAttach = undefined
+couchGetAttach db doc att = do
+    Response _ _ hs bsrc <- couch HT.methodGet
+            (attachPath db doc att)
+            []
+            []
+            (RequestBodyBS "")
+            protect'
+    return (bsrc, fromMaybe "" . lookup "Content-Type" $ hs)
 
 -- | Put or update document attachment
 couchPutAttach :: MonadCouch m =>
@@ -55,7 +62,7 @@ couchPutAttach db doc att rev contentType body = do
     Response _ _ _ bsrc <- couch HT.methodPut
             (attachPath db doc att)
             [(HT.hContentType, contentType)]
-            [("rev", Just rev) | rev /= ""]
+            [("rev", Just rev)]
             body
             protect'
     j <- bsrc $$+- CA.sinkParser A.json
