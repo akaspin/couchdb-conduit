@@ -2,19 +2,21 @@
 
 -- | CouchDB document attachments.
 --
---   /Note about attachment paths:/ Attachments may have embedded @\/@ 
---   characters that are sent unescaped to CouchDB. You can use this to 
---   provide a subtree of attachments under a document. A DocID must have 
---   any @\/@ escaped as @%2F@. So if you have document @a\/b\/c@ with an 
---   attachment @d\/e\/f.txt@, you would be able to access it at 
---   @http:\/\/couchdb\/db\/a%2fb%2fc\/d\/e\/f.txt@. 
+--   /Note about attachment paths:/ Attachments may have embedded @\/@
+--   characters that are sent unescaped to CouchDB. You can use this to
+--   provide a subtree of attachments under a document. A DocID must have
+--   any @\/@ escaped as @%2F@. So if you have document @a\/b\/c@ with an
+--   attachment @d\/e\/f.txt@, you would be able to access it at
+--   @http:\/\/couchdb\/db\/a%2fb%2fc\/d\/e\/f.txt@.
 --
 --   @couchdb-conduit@ automaticaly normalizes attachment paths.
 
 module Database.CouchDB.Conduit.Attachment (
     couchGetAttach,
     couchPutAttach,
-    couchDeleteAttach
+    couchDeleteAttach,
+    couchAttachRev,
+    couchAttachRev'
 ) where
 
 import Control.Exception.Lifted (throw)
@@ -29,10 +31,12 @@ import qualified Data.Conduit.Attoparsec as CA
 import Network.HTTP.Conduit (RequestBody(..), Response(..))
 import qualified Network.HTTP.Types as HT
 
-import Database.CouchDB.Conduit.Internal.Connection 
+import Database.CouchDB.Conduit.Internal.Connection
             (MonadCouch (..), Path, Revision, mkPath)
 import Database.CouchDB.Conduit.Internal.Parser (extractRev)
 import Database.CouchDB.Conduit.LowLevel (couch, protect')
+
+import qualified Database.CouchDB.Conduit.Internal.Doc as D
 
 -- | Get document attachment and @Content-Type@.
 couchGetAttach :: MonadCouch m =>
@@ -85,13 +89,34 @@ couchDeleteAttach db doc att rev = do
     j <- bsrc $$+- CA.sinkParser A.json
     either throw return $ extractRev j
 
+
+-- | Get Revision of a attachment.
+couchAttachRev :: MonadCouch m =>
+                  Path         -- ^ Database
+                  -> Path       -- ^ Document
+                  -> Path       -- ^ Attachment path
+                  -> m Revision
+couchAttachRev db doc attach =
+  D.couchRev (attachPath db doc attach)
+
+-- | Brain-free version of 'couchAttachRev'. If attach absent,
+--   just return empty ByteString.
+couchAttachRev' :: MonadCouch m =>
+                   Path       -- ^ Database
+                   -> Path     -- ^ Document
+                   -> Path     -- ^ Attachment path
+                   -> m Revision
+couchAttachRev' db doc attach =
+  D.couchRev' (attachPath  db doc attach)
+
+
 ------------------------------------------------------------------------------
 -- Internal
 ------------------------------------------------------------------------------
 
 -- | Make normalized attachment path
 attachPath :: Path -> Path -> ByteString -> Path
-attachPath db doc att = 
+attachPath db doc att =
     mkPath $ db : doc : attP
   where
     attP = split '/' att
