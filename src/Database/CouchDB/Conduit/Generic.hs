@@ -1,7 +1,7 @@
 {-# LANGUAGE OverloadedStrings, ScopedTypeVariables #-}
 
 -- | Generic methods for CouchDB documents. Unlike explicit, generic methods 
---   uses "Data.Generic".
+--   uses "Data.Generics".
 --
 -- > {-# LANGUAGE DeriveDataTypeable #-}
 -- > {-# LANGUAGE OverloadedStrings, ScopedTypeVariables #-}
