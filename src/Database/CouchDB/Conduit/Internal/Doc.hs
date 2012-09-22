@@ -17,7 +17,7 @@ import              Prelude hiding (catch)
 import Control.Monad (void)
 import Control.Exception.Lifted (catch, throw)
 
-import Data.Maybe (fromJust)
+import Data.Maybe (fromJust, fromMaybe)
 import qualified Data.ByteString as B
 import qualified Data.ByteString.Lazy as BL
 import qualified Data.Text.Encoding as TE
@@ -52,11 +52,24 @@ couchRev p = do
 couchRev' :: MonadCouch m =>
        Path                 -- ^ Correct 'Path' with escaped fragments.
     -> m Revision
-couchRev' p = 
-    catch (couchRev p) handler404
+couchRev' p = do
+    r <- catch (_couchRev p) handler404
+    return $ fromMaybe B.empty r
   where
-    handler404 (CouchHttpError 404 _) = return B.empty
+    handler404 (CouchHttpError 404 _) = return Nothing
     handler404 e = throw e
+
+
+_couchRev :: MonadCouch m =>
+       Path                 -- ^ Correct 'Path' with escaped fragments.
+    -> m (Maybe Revision)
+_couchRev p = do
+    (H.Response _ _ hs _) <- couch HT.methodHead p [] [] 
+                                 (H.RequestBodyBS B.empty) protect' 
+    return $ lookupRev hs
+  where
+    lookupRev = fmap (B.tail . B.init) . lookup "Etag"
+
 
 -- | Delete the given revision of the object.    
 couchDelete :: MonadCouch m => 
@@ -91,7 +104,7 @@ couchGetWith f p q = do
 couchPutWith :: MonadCouch m =>
       (a -> BL.ByteString)  -- ^ Encoder
    -> Path                  -- ^ Correct 'Path' with escaped fragments.
-   -> Revision              -- ^ Document revision. For new docs provide 
+   -> Revision              -- ^ Document revision. For new docs provide
                             -- ^ empty string.
    -> Query                 -- ^ Query arguments.
    -> a                     -- ^ The object to store.
