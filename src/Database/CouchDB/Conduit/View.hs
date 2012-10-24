@@ -17,6 +17,8 @@ module Database.CouchDB.Conduit.View
     couchView_,
     couchViewPost,
     couchViewPost_,
+    couchViewRev,
+    couchViewRev',
     rowValue,
     rowDoc,
     rowField,
@@ -46,6 +48,8 @@ import qualified Network.HTTP.Types as HT
 import Database.CouchDB.Conduit.Internal.Connection
 import Database.CouchDB.Conduit.LowLevel (couch, protect')
 
+import qualified Database.CouchDB.Conduit.Internal.Doc as D
+
 -- $run
 -- In contrast to the functions of access to documents that are loaded into 
 -- memory entirely. 'couchView' and 'couchView'' combines the incredible power 
@@ -64,11 +68,11 @@ import Database.CouchDB.Conduit.LowLevel (couch, protect')
 -- > runCouch def $ do
 -- >
 -- >     -- Print all upon receipt.
--- >     src <- couchView "mydb" "mydesign" "myview" [] 
+-- >     src <- couchView "mydb" "mydesign" "myview" []
 -- >     src $$ CL.mapM_ (liftIO . print)
 -- >
 -- >     -- ... Or extract row value and consume
--- >     src' <- couchView "mydb" "mydesign" "myview" [] 
+-- >     src' <- couchView "mydb" "mydesign" "myview" []
 -- >     res <- src' $= rowValue $$ CL.consume
 couchView :: MonadCouch m =>
        Path                 -- ^ Database
@@ -79,7 +83,7 @@ couchView :: MonadCouch m =>
 couchView db design view q = do
     H.Response _ _ _ bsrc <- couch HT.methodGet 
             (viewPath db design view)
-            [] q 
+            [] q
             (H.RequestBodyBS B.empty) protect'
     bsrc $$+- conduitRows
 
@@ -111,7 +115,7 @@ couchView_ db design view q sink = do
 -- > runCouch def $ do
 -- >     src <- couchViewPost "mydb" "mydesign" "myview" 
 -- >             (mkQuery [QPGroup])
--- >             ["key1", "key2", "key3"] 
+-- >             ["key1", "key2", "key3"]
 -- >     src $$ CL.mapM_ (liftIO . print)
 couchViewPost :: (MonadCouch m, A.ToJSON a) =>
        Path                 -- ^ Database
@@ -156,6 +160,31 @@ rowDoc = rowField "doc"
 rowField :: Monad m => T.Text -> Conduit A.Object m A.Value
 rowField f = CL.mapMaybe (M.lookup f) 
 
+
+-- | Get Revision of a view.
+couchViewRev :: MonadCouch m =>
+       Path       -- ^ Database.
+    -> Path       -- ^ Design.
+    -> Path       -- ^ View.
+    -> m Revision
+couchViewRev db design view =
+  D.couchRev (mkPath [ db
+                     , "_design", design
+                     ,"_view", view])
+
+-- | Brain-free version of 'couchViewRev'. If view absent,
+--   just return empty ByteString.
+couchViewRev' :: MonadCouch m =>
+       Path       -- ^ Database.
+    -> Path       -- ^ Design.
+    -> Path       -- ^ View.
+    -> m Revision
+couchViewRev' db design view =
+  D.couchRev' (mkPath [ db
+                      , "_design", design
+                      , "_view", view])
+
+
 -----------------------------------------------------------------------------
 -- Internal
 -----------------------------------------------------------------------------
@@ -185,7 +214,6 @@ conduitRows = do
     valToObj (A.Object o) = o
     valToObj _ = throw $ CouchInternalError "row is not object"
 
-    
     
     
     
