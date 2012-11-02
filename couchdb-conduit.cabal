@@ -1,5 +1,5 @@
 name:           couchdb-conduit
-version:        0.10.5
+version:        0.10.6
 cabal-version:  >= 1.8
 build-type:     Simple
 stability:      Testing
@@ -34,7 +34,7 @@ library
                    conduit >= 0.5 && < 0.6,
                    containers >= 0.2,
                    data-default,
-                   http-conduit >= 1.6 && < 1.7,
+                   http-conduit >= 1.6 && < 2,
                    http-types >= 0.7 && < 0.8,
                    lifted-base >= 0.1,
                    monad-control >= 0.3 && < 0.4,
@@ -80,7 +80,7 @@ test-suite test
                    conduit >= 0.5 && < 0.6,
                    containers >= 0.2,
                    data-default,
-                   http-conduit >= 1.6 && < 1.7,
+                   http-conduit >= 1.6 && < 2,
                    http-types >= 0.7 && < 0.8,
                    lifted-base >= 0.1,
                    monad-control >= 0.3 && < 0.4,
