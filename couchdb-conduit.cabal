@@ -56,7 +56,8 @@ library
                     Database.CouchDB.Conduit.LowLevel,
                     Database.CouchDB.Conduit.View,
                     Database.CouchDB.Conduit.View.Query,
-                    Database.CouchDB.Conduit.Attachment
+                    Database.CouchDB.Conduit.Attachment,
+                    Database.CouchDB.Conduit.Bulk
   other-modules:    
                     Database.CouchDB.Conduit.Internal.Doc,
                     Database.CouchDB.Conduit.Internal.Parser,
