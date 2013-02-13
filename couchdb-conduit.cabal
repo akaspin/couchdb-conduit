@@ -35,7 +35,7 @@ library
                    containers >= 0.2,
                    data-default,
                    http-conduit >= 1.6 && < 2,
-                   http-types >= 0.7 && < 0.8,
+                   http-types >= 0.8 && < 0.9,
                    lifted-base >= 0.1,
                    monad-control >= 0.3 && < 0.4,
                    resourcet,
@@ -56,7 +56,8 @@ library
                     Database.CouchDB.Conduit.LowLevel,
                     Database.CouchDB.Conduit.View,
                     Database.CouchDB.Conduit.View.Query,
-                    Database.CouchDB.Conduit.Attachment
+                    Database.CouchDB.Conduit.Attachment,
+                    Database.CouchDB.Conduit.Bulk
   other-modules:    
                     Database.CouchDB.Conduit.Internal.Doc,
                     Database.CouchDB.Conduit.Internal.Parser,
@@ -81,7 +82,7 @@ test-suite test
                    containers >= 0.2,
                    data-default,
                    http-conduit >= 1.6 && < 2,
-                   http-types >= 0.7 && < 0.8,
+                   http-types >= 0.8 && < 0.9,
                    lifted-base >= 0.1,
                    monad-control >= 0.3 && < 0.4,
                    string-conversions,
