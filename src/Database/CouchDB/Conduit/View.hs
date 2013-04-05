@@ -32,10 +32,8 @@ import qualified Data.Aeson as A
 import Data.Attoparsec
 
 import qualified Data.Vector.Generic as V
-import qualified Data.Vector.Fusion.Stream as S
 
-import Data.Conduit (MonadResource, Source, Conduit, Sink, ($$), ($=), ($$+-))
-import Data.Conduit.Util (sourceState, SourceStateResult(..))
+import Data.Conduit (MonadResource, Source, Conduit, Sink, ($$), ($=), ($$+-), yield)
                      
 import qualified Data.Conduit.List as CL
 import qualified Data.Conduit.Attoparsec as CA
@@ -77,11 +75,11 @@ couchView :: MonadCouch m =>
     -> HT.Query             -- ^ Query parameters
     -> m (Source m A.Object)
 couchView db design view q = do
-    H.Response _ _ _ bsrc <- couch HT.methodGet 
+    resp <- couch HT.methodGet 
             (viewPath db design view)
             [] q 
             (H.RequestBodyBS B.empty) protect'
-    bsrc $$+- conduitRows
+    H.responseBody resp $$+- conduitRows
 
 -- | Brain-free version of 'couchView'. Takes 'Sink' to consume response.
 --
@@ -121,12 +119,12 @@ couchViewPost :: (MonadCouch m, A.ToJSON a) =>
     -> a                    -- ^ View @keys@. Must be list or cortege.
     -> m (Source m A.Object)    
 couchViewPost db design view q ks = do
-    H.Response _ _ _ bsrc <- couch HT.methodPost 
+    resp <- couch HT.methodPost 
             (viewPath db design view)  
             [] 
             q 
             (H.RequestBodyLBS mkPost) protect'
-    bsrc $$+- conduitRows
+    H.responseBody resp $$+- conduitRows
   where
     mkPost = A.encode $ A.object ["keys" A..= ks]
 
@@ -166,10 +164,7 @@ viewPath db design view = mkPath [db, "_design", design, "_view", view]
 
 -- | Use an immutable vector as a source.
 sourceVector :: (Monad m, V.Vector v a) => v a -> Source m a
-sourceVector vec = sourceState (V.stream vec) f
-    where f stream | S.null stream = return StateClosed
-                   | otherwise = return $ StateOpen 
-                        (S.tail stream) (S.head stream)
+sourceVector = V.mapM_ yield
 
 -- | Extra
 conduitRows :: MonadResource m => Sink BS8.ByteString m (Source m A.Object)

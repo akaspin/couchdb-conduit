@@ -17,8 +17,6 @@ module Database.CouchDB.Conduit.LowLevel (
     protect'
 ) where
 
-import              Prelude hiding (catch)
-
 import Control.Exception.Lifted (catch, throw)
 import Control.Exception (SomeException)
 
@@ -81,7 +79,7 @@ couch' meth pathFn hdrs qs reqBody protectFn =  do
             , H.path            = pathFn $ couchPrefix conn
             , H.queryString     = HT.renderQuery False qs
             , H.requestBody     = reqBody
-            , H.checkStatus = const . const $ Nothing }
+            , H.checkStatus = const . const . const $ Nothing }
     -- Apply auth if needed
     let req' = if couchLogin conn == B.empty then req else H.applyBasicAuth 
             (couchLogin conn) (couchPass conn) req
@@ -100,19 +98,21 @@ protect :: MonadCouch m =>
     -> (CouchResponse m -> m (CouchResponse m)) -- ^ handler
     -> CouchResponse m   -- ^ Response
     -> m (CouchResponse m)
-protect goodCodes h ~resp@(H.Response (HT.Status sc sm) _ _ bsrc)
-    | sc == 304 = throw NotModified
-    | sc `elem` goodCodes = h resp
-    | otherwise = do
-        v <- catch (bsrc $$+- sinkParser A.json)
-                   (\(_::SomeException) -> return A.Null)
+protect goodCodes h ~resp =
+    case H.responseStatus resp of
+      (HT.Status sc sm)
+          | sc == 304 -> throw NotModified
+          | sc `elem` goodCodes -> h resp
+          | otherwise -> do
+        v <- catch (H.responseBody resp $$+- sinkParser A.json)
+             (\(_::SomeException) -> return A.Null)
         throw $ CouchHttpError sc $ msg v
-        where 
-        msg v = sm <> reason v
-        reason (A.Object v) = case M.lookup "reason" v of
-                Just (A.String t) -> ": " <> cs t
-                _                 -> ""
-        reason _ = B.empty
+            where 
+              msg v = sm <> reason v
+              reason (A.Object v) = case M.lookup "reason" v of
+                                      Just (A.String t) -> ": " <> cs t
+                                      _                 -> ""
+              reason _ = B.empty
 
 -- | Protect from typical status codes. It's equivalent of
 --
