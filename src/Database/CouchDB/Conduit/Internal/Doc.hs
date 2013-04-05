@@ -12,7 +12,6 @@ module Database.CouchDB.Conduit.Internal.Doc (
     couchPutWith'
 ) where
 
-import              Prelude hiding (catch)
 
 import Control.Monad (void)
 import Control.Exception.Lifted (catch, throw)
@@ -41,9 +40,9 @@ couchRev :: MonadCouch m =>
        Path                 -- ^ Correct 'Path' with escaped fragments.
     -> m Revision
 couchRev p = do
-    (H.Response _ _ hs _) <- couch HT.methodHead p [] [] 
-                                 (H.RequestBodyBS B.empty) protect' 
-    return $ peekRev hs        
+    resp <- couch HT.methodHead p [] [] 
+            (H.RequestBodyBS B.empty) protect' 
+    return $ peekRev $ H.responseHeaders resp        
   where
     peekRev = B.tail . B.init . fromJust . lookup "Etag"
 
@@ -79,10 +78,10 @@ couchGetWith :: MonadCouch m =>
        -> Query                      -- ^ Query
        -> m (Revision, a)
 couchGetWith f p q = do
-    H.Response _ _ _ bsrc <- couch HT.methodGet 
-                                 p [] q 
-                                 (H.RequestBodyBS B.empty) protect'
-    j <- bsrc $$+- CA.sinkParser A.json
+    resp <- couch HT.methodGet 
+            p [] q 
+           (H.RequestBodyBS B.empty) protect'
+    j <- H.responseBody resp $$+- CA.sinkParser A.json
     A.String r <- either throw return $ extractField "_rev" j
     o <- jsonToTypeWith f j 
     return (TE.encodeUtf8 r, o)
@@ -97,10 +96,10 @@ couchPutWith :: MonadCouch m =>
    -> a                     -- ^ The object to store.
    -> m Revision
 couchPutWith f p r q val = do
-    H.Response _ _ _ bsrc <- couch HT.methodPut 
-                                 p (ifMatch r) q 
-                                 (H.RequestBodyLBS $ f val) protect'
-    j <- bsrc $$+- CA.sinkParser A.json
+    resp <- couch HT.methodPut 
+            p (ifMatch r) q 
+           (H.RequestBodyLBS $ f val) protect'
+    j <- H.responseBody resp $$+- CA.sinkParser A.json
     either throw return $ extractRev j
   where 
     ifMatch "" = []

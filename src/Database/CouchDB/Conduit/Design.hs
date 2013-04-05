@@ -7,7 +7,6 @@ module Database.CouchDB.Conduit.Design (
     couchPutView
 ) where
 
-import Prelude hiding (catch)
 import Control.Monad (void)
 import Control.Exception.Lifted (catch)
 
