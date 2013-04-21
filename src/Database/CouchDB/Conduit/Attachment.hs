@@ -26,7 +26,7 @@ import qualified Data.Aeson as A
 import Data.Conduit (ResumableSource, ($$+-))
 import qualified Data.Conduit.Attoparsec as CA
 
-import Network.HTTP.Conduit (RequestBody(..), Response(..))
+import qualified Network.HTTP.Conduit as H
 import qualified Network.HTTP.Types as HT
 
 import Database.CouchDB.Conduit.Internal.Connection 
@@ -45,7 +45,7 @@ couchGetAttach db doc att = do
             (attachPath db doc att)
             []
             []
-            (RequestBodyBS "")
+            (H.RequestBodyBS "")
             protect'
     return ((H.responseBody response), fromMaybe "" . lookup "Content-Type" $ (H.responseHeaders response))
 
@@ -56,7 +56,7 @@ couchPutAttach :: MonadCouch m =>
     -> ByteString       -- ^ Attachment path
     -> Revision         -- ^ Document revision
     -> ByteString       -- ^ Attacment @Content-Type@
-    -> RequestBody m    -- ^ Attachment body
+    -> H.RequestBody m  -- ^ Attachment body
     -> m Revision
 couchPutAttach db doc att rev contentType body = do
     response <- couch HT.methodPut
@@ -80,7 +80,7 @@ couchDeleteAttach db doc att rev = do
             (attachPath db doc att)
             []
             [("rev", Just rev)]
-            (RequestBodyBS "")
+            (H.RequestBodyBS "")
             protect'
     j <- (H.responseBody response) $$+- CA.sinkParser A.json
     either throw return $ extractRev j
