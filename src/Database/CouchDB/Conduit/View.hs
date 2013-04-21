@@ -32,10 +32,8 @@ import qualified Data.Aeson as A
 import Data.Attoparsec
 
 import qualified Data.Vector.Generic as V
-import qualified Data.Vector.Fusion.Stream as S
 
-import Data.Conduit (MonadResource, Source, Conduit, Sink, ($$), ($=), ($$+-))
-import Data.Conduit.Util (sourceState, SourceStateResult(..))
+import Data.Conduit (MonadResource, Source, Conduit, Sink, ($$), ($$+-), yield)
                      
 import qualified Data.Conduit.List as CL
 import qualified Data.Conduit.Attoparsec as CA
