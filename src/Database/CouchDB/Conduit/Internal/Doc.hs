@@ -12,7 +12,7 @@ module Database.CouchDB.Conduit.Internal.Doc (
     couchPutWith'
 ) where
 
-import              Prelude hiding (catch)
+import              Prelude
 
 import Control.Monad (void)
 import Control.Exception.Lifted (catch, throw)

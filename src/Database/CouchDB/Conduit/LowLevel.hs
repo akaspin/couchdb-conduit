@@ -17,7 +17,7 @@ module Database.CouchDB.Conduit.LowLevel (
     protect'
 ) where
 
-import              Prelude hiding (catch)
+import              Prelude
 
 import Control.Exception.Lifted (catch, throw)
 import Control.Exception (SomeException)
