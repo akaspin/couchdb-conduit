@@ -32,10 +32,8 @@ import qualified Data.Aeson as A
 import Data.Attoparsec
 
 import qualified Data.Vector.Generic as V
-import qualified Data.Vector.Fusion.Stream as S
 
-import Data.Conduit (MonadResource, Source, Conduit, Sink, ($$), ($=), ($$+-))
-import Data.Conduit.Util (sourceState, SourceStateResult(..))
+import Data.Conduit (MonadResource, Source, Conduit, Sink, ($$), ($$+-), yield)
                      
 import qualified Data.Conduit.List as CL
 import qualified Data.Conduit.Attoparsec as CA
@@ -77,11 +75,11 @@ couchView :: MonadCouch m =>
     -> HT.Query             -- ^ Query parameters
     -> m (Source m A.Object)
 couchView db design view q = do
-    H.Response _ _ _ bsrc <- couch HT.methodGet 
+    response <- couch HT.methodGet 
             (viewPath db design view)
             [] q 
             (H.RequestBodyBS B.empty) protect'
-    bsrc $$+- conduitRows
+    H.responseBody response $$+- conduitRows
 
 -- | Brain-free version of 'couchView'. Takes 'Sink' to consume response.
 --
@@ -121,12 +119,12 @@ couchViewPost :: (MonadCouch m, A.ToJSON a) =>
     -> a                    -- ^ View @keys@. Must be list or cortege.
     -> m (Source m A.Object)    
 couchViewPost db design view q ks = do
-    H.Response _ _ _ bsrc <- couch HT.methodPost 
+    response <- couch HT.methodPost 
             (viewPath db design view)  
             [] 
             q 
             (H.RequestBodyLBS mkPost) protect'
-    bsrc $$+- conduitRows
+    H.responseBody response $$+- conduitRows
   where
     mkPost = A.encode $ A.object ["keys" A..= ks]
 
@@ -164,13 +162,6 @@ rowField f = CL.mapMaybe (M.lookup f)
 viewPath :: Path -> Path -> Path -> Path
 viewPath db design view = mkPath [db, "_design", design, "_view", view]
 
--- | Use an immutable vector as a source.
-sourceVector :: (Monad m, V.Vector v a) => v a -> Source m a
-sourceVector vec = sourceState (V.stream vec) f
-    where f stream | S.null stream = return StateClosed
-                   | otherwise = return $ StateOpen 
-                        (S.tail stream) (S.head stream)
-
 -- | Extra
 conduitRows :: MonadResource m => Sink BS8.ByteString m (Source m A.Object)
 conduitRows = do 
@@ -180,7 +171,7 @@ conduitRows = do
             (Just (A.Array r)) -> return r
             _ -> return V.empty
         _ -> throw $ CouchInternalError "view entry is not an object"
-    return $ sourceVector rows $= CL.map valToObj
+    return $ V.mapM_ (yield . valToObj) rows
   where
     valToObj (A.Object o) = o
     valToObj _ = throw $ CouchInternalError "row is not object"
