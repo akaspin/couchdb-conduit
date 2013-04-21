@@ -164,13 +164,6 @@ rowField f = CL.mapMaybe (M.lookup f)
 viewPath :: Path -> Path -> Path -> Path
 viewPath db design view = mkPath [db, "_design", design, "_view", view]
 
--- | Use an immutable vector as a source.
-sourceVector :: (Monad m, V.Vector v a) => v a -> Source m a
-sourceVector vec = sourceState (V.stream vec) f
-    where f stream | S.null stream = return StateClosed
-                   | otherwise = return $ StateOpen 
-                        (S.tail stream) (S.head stream)
-
 -- | Extra
 conduitRows :: MonadResource m => Sink BS8.ByteString m (Source m A.Object)
 conduitRows = do 
@@ -180,7 +173,7 @@ conduitRows = do
             (Just (A.Array r)) -> return r
             _ -> return V.empty
         _ -> throw $ CouchInternalError "view entry is not an object"
-    return $ sourceVector rows $= CL.map valToObj
+    return $ V.mapM_ (yield . valToObj) rows
   where
     valToObj (A.Object o) = o
     valToObj _ = throw $ CouchInternalError "row is not object"
