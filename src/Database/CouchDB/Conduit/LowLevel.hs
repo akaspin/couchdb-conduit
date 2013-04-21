@@ -100,15 +100,15 @@ protect :: MonadCouch m =>
     -> (CouchResponse m -> m (CouchResponse m)) -- ^ handler
     -> CouchResponse m   -- ^ Response
     -> m (CouchResponse m)
-protect goodCodes h ~resp@(H.Response (HT.Status sc sm) _ _ bsrc)
-    | sc == 304 = throw NotModified
-    | sc `elem` goodCodes = h resp
+protect goodCodes h resp
+    | (H.responseStatus resp) == HT.status304 = throw NotModified
+    | (H.responseStatus resp) `elem` goodCodes = h resp
     | otherwise = do
-        v <- catch (bsrc $$+- sinkParser A.json)
+        v <- catch ((H.responseBody resp) $$+- sinkParser A.json)
                    (\(_::SomeException) -> return A.Null)
-        throw $ CouchHttpError sc $ msg v
+        throw $ CouchHttpError (HT.statusCode $ H.responseStatus resp) $ msg v
         where 
-        msg v = sm <> reason v
+        msg v = (HT.statusMessage $ H.responseStatus resp) <> reason v
         reason (A.Object v) = case M.lookup "reason" v of
                 Just (A.String t) -> ": " <> cs t
                 _                 -> ""

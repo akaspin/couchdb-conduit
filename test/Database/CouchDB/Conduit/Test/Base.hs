@@ -29,9 +29,9 @@ tests = mutuallyExclusive $ testGroup "Base" [
 -- | Just connect
 caseJustConnect :: Assertion
 caseJustConnect = runCouch def $ do
-    H.Response (HT.Status sc _) _ _h _bsrc <- couch HT.methodGet "" [] [] 
+    response <- couch HT.methodGet "" [] [] 
                     (H.RequestBodyBS B.empty) protect'
-    liftIO $ sc @=? 200
+    liftIO $ (H.responseStatus response) @=? HT.status200
 
 -- | Put and delete
 caseDbPut :: Assertion    

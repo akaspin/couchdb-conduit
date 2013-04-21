@@ -41,13 +41,13 @@ couchGetAttach :: MonadCouch m =>
     -> ByteString       -- ^ Attachment path
     -> m (ResumableSource m ByteString, ByteString)
 couchGetAttach db doc att = do
-    Response _ _ hs bsrc <- couch HT.methodGet
+    response <- couch HT.methodGet
             (attachPath db doc att)
             []
             []
             (RequestBodyBS "")
             protect'
-    return (bsrc, fromMaybe "" . lookup "Content-Type" $ hs)
+    return ((H.responseBody response), fromMaybe "" . lookup "Content-Type" $ (H.responseHeaders response))
 
 -- | Put or update document attachment
 couchPutAttach :: MonadCouch m =>
@@ -59,13 +59,13 @@ couchPutAttach :: MonadCouch m =>
     -> RequestBody m    -- ^ Attachment body
     -> m Revision
 couchPutAttach db doc att rev contentType body = do
-    Response _ _ _ bsrc <- couch HT.methodPut
+    response <- couch HT.methodPut
             (attachPath db doc att)
             [(HT.hContentType, contentType)]
             [("rev", Just rev)]
             body
             protect'
-    j <- bsrc $$+- CA.sinkParser A.json
+    j <- (H.responseBody response) $$+- CA.sinkParser A.json
     either throw return $ extractRev j
 
 -- | Delete document attachment
@@ -76,13 +76,13 @@ couchDeleteAttach :: MonadCouch m =>
     -> Revision         -- ^ Document revision
     -> m Revision
 couchDeleteAttach db doc att rev = do
-    Response _ _ _ bsrc <- couch HT.methodDelete
+    response <- couch HT.methodDelete
             (attachPath db doc att)
             []
             [("rev", Just rev)]
             (RequestBodyBS "")
             protect'
-    j <- bsrc $$+- CA.sinkParser A.json
+    j <- (H.responseBody response) $$+- CA.sinkParser A.json
     either throw return $ extractRev j
 
 ------------------------------------------------------------------------------

@@ -77,11 +77,11 @@ couchView :: MonadCouch m =>
     -> HT.Query             -- ^ Query parameters
     -> m (Source m A.Object)
 couchView db design view q = do
-    H.Response _ _ _ bsrc <- couch HT.methodGet 
+    response <- couch HT.methodGet 
             (viewPath db design view)
             [] q 
             (H.RequestBodyBS B.empty) protect'
-    bsrc $$+- conduitRows
+    H.responseBody response $$+- conduitRows
 
 -- | Brain-free version of 'couchView'. Takes 'Sink' to consume response.
 --
@@ -121,12 +121,12 @@ couchViewPost :: (MonadCouch m, A.ToJSON a) =>
     -> a                    -- ^ View @keys@. Must be list or cortege.
     -> m (Source m A.Object)    
 couchViewPost db design view q ks = do
-    H.Response _ _ _ bsrc <- couch HT.methodPost 
+    response <- couch HT.methodPost 
             (viewPath db design view)  
             [] 
             q 
             (H.RequestBodyLBS mkPost) protect'
-    bsrc $$+- conduitRows
+    H.responseBody response $$+- conduitRows
   where
     mkPost = A.encode $ A.object ["keys" A..= ks]
 
