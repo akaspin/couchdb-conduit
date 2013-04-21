@@ -81,7 +81,7 @@ couch' meth pathFn hdrs qs reqBody protectFn =  do
             , H.path            = pathFn $ couchPrefix conn
             , H.queryString     = HT.renderQuery False qs
             , H.requestBody     = reqBody
-            , H.checkStatus = const . const $ Nothing }
+            , H.checkStatus = const . const . const $ Nothing }
     -- Apply auth if needed
     let req' = if couchLogin conn == B.empty then req else H.applyBasicAuth 
             (couchLogin conn) (couchPass conn) req
