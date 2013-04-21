@@ -96,7 +96,7 @@ couch' meth pathFn hdrs qs reqBody protectFn =  do
 --   
 --   To protect from typical errors use 'protect''.
 protect :: MonadCouch m => 
-       [Int]             -- ^ Good codes
+       [HT.Status]             -- ^ Good codes
     -> (CouchResponse m -> m (CouchResponse m)) -- ^ handler
     -> CouchResponse m   -- ^ Response
     -> m (CouchResponse m)
@@ -122,4 +122,4 @@ protect goodCodes h resp
 protect' :: MonadCouch m => 
        CouchResponse m   -- ^ Response
     -> m (CouchResponse m)
-protect' = protect [200, 201, 202, 304] return
+protect' = protect [HT.status200, HT.status201, HT.status202, HT.status304] return

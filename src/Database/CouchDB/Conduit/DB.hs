@@ -48,7 +48,7 @@ couchPutDB_ :: MonadCouch m =>
 couchPutDB_ db = void $ couch HT.methodPut 
                     (mkPath [db]) [] []
                     (H.RequestBodyBS B.empty) 
-                    (protect [200, 201, 202, 304, 412] return) 
+                    (protect [HT.status200, HT.status201, HT.status202, HT.status304, HT.status412] return) 
 
 -- | Delete a database.
 couchDeleteDB :: MonadCouch m => 
