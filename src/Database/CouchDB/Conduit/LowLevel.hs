@@ -17,7 +17,7 @@ module Database.CouchDB.Conduit.LowLevel (
     protect'
 ) where
 
-import              Prelude hiding (catch)
+import              Prelude
 
 import Control.Exception.Lifted (catch, throw)
 import Control.Exception (SomeException)
@@ -81,7 +81,7 @@ couch' meth pathFn hdrs qs reqBody protectFn =  do
             , H.path            = pathFn $ couchPrefix conn
             , H.queryString     = HT.renderQuery False qs
             , H.requestBody     = reqBody
-            , H.checkStatus = const . const $ Nothing }
+            , H.checkStatus = const . const . const $ Nothing }
     -- Apply auth if needed
     let req' = if couchLogin conn == B.empty then req else H.applyBasicAuth 
             (couchLogin conn) (couchPass conn) req
@@ -96,19 +96,19 @@ couch' meth pathFn hdrs qs reqBody protectFn =  do
 --   
 --   To protect from typical errors use 'protect''.
 protect :: MonadCouch m => 
-       [Int]             -- ^ Good codes
+       [HT.Status]             -- ^ Good codes
     -> (CouchResponse m -> m (CouchResponse m)) -- ^ handler
     -> CouchResponse m   -- ^ Response
     -> m (CouchResponse m)
-protect goodCodes h ~resp@(H.Response (HT.Status sc sm) _ _ bsrc)
-    | sc == 304 = throw NotModified
-    | sc `elem` goodCodes = h resp
+protect goodCodes h resp
+    | (H.responseStatus resp) == HT.status304 = throw NotModified
+    | (H.responseStatus resp) `elem` goodCodes = h resp
     | otherwise = do
-        v <- catch (bsrc $$+- sinkParser A.json)
+        v <- catch ((H.responseBody resp) $$+- sinkParser A.json)
                    (\(_::SomeException) -> return A.Null)
-        throw $ CouchHttpError sc $ msg v
+        throw $ CouchHttpError (HT.statusCode $ H.responseStatus resp) $ msg v
         where 
-        msg v = sm <> reason v
+        msg v = (HT.statusMessage $ H.responseStatus resp) <> reason v
         reason (A.Object v) = case M.lookup "reason" v of
                 Just (A.String t) -> ": " <> cs t
                 _                 -> ""
@@ -122,4 +122,4 @@ protect goodCodes h ~resp@(H.Response (HT.Status sc sm) _ _ bsrc)
 protect' :: MonadCouch m => 
        CouchResponse m   -- ^ Response
     -> m (CouchResponse m)
-protect' = protect [200, 201, 202, 304] return
+protect' = protect [HT.status200, HT.status201, HT.status202, HT.status304] return
