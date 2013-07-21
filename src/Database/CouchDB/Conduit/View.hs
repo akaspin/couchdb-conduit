@@ -86,10 +86,10 @@ couchView db design view q = do
 -- > runCouch def $ do
 -- >
 -- >     -- Print all upon receipt.
--- >     couchView' "mydb" "mydesign" "myview" [] $ CL.mapM_ (liftIO . print)
+-- >     couchView_ "mydb" "mydesign" "myview" [] $ CL.mapM_ (liftIO . print)
 -- >
 -- >     -- ... Or extract row value and consume
--- >     res <- couchView' "mydb" "mydesign" "myview" [] $ 
+-- >     res <- couchView_ "mydb" "mydesign" "myview" [] $ 
 -- >                        rowValue =$ CL.consume
 couchView_ :: MonadCouch m =>
        Path                 -- ^ Database
