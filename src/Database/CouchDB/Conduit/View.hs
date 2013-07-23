@@ -13,6 +13,8 @@ module Database.CouchDB.Conduit.View
 (   
     -- * Acccessing views #run#
     -- $run
+    allDocsView,
+    allDocsView_,
     couchView,
     couchView_,
     couchViewPost,
@@ -180,8 +182,44 @@ conduitRows = do
     valToObj (A.Object o) = o
     valToObj _ = throw $ CouchInternalError "row is not object"
 
-    
-    
-    
-    
-    
+-- | Use '_all_docs' CouchDB handler like view.
+--
+-- > runCouch def $ do
+-- >
+-- >     -- Print all upon receipt.
+-- >     src <- allDocsView "mydb" [] 
+-- >     src $$ CL.mapM_ (liftIO . print)
+-- >
+-- >     -- ... Or extract row value and consume
+-- >     src' <- allDocsView "mydb" [] 
+-- >     res <- src' $= rowValue $$ CL.consume
+allDocsView :: MonadCouch m =>
+       Path                 -- ^ Database
+    -> HT.Query             -- ^ Query parameters
+    -> m (Source m A.Object)
+allDocsView db q = do
+    resp <- couch HT.methodGet 
+            (mkPath [db,"_all_docs"])
+            [] q 
+            (H.RequestBodyBS B.empty) protect'
+    H.responseBody resp $$+- conduitRows
+
+-- | Brain-free version of 'allDocsView'. Takes 'Sink' to consume response.
+--
+-- > runCouch def $ do
+-- >
+-- >     -- Print all upon receipt.
+-- >     allDocsView_ "mydb" [] $ CL.mapM_ (liftIO . print)
+-- >
+-- >     -- ... Or extract row value and consume
+-- >     res <- allDocsView_ "mydb" [] $ 
+-- >                        rowValue =$ CL.consume
+allDocsView_ :: MonadCouch m =>
+       Path                 -- ^ Database
+    -> HT.Query             -- ^ Query parameters
+    -> Sink A.Object m a    -- ^ Sink for handle view rows.
+    -> m a
+allDocsView_ db q sink = do
+    raw <- allDocsView db q
+    raw $$ sink
+
