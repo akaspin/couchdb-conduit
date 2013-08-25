@@ -63,10 +63,10 @@ couchSecureDB :: MonadCouch m =>
        Path             -- ^ Database
     -> [B.ByteString]   -- ^ Admin roles 
     -> [B.ByteString]   -- ^ Admin names
-    -> [B.ByteString]   -- ^ Readers roles 
-    -> [B.ByteString]   -- ^ Readers names
+    -> [B.ByteString]   -- ^ Members roles 
+    -> [B.ByteString]   -- ^ Members names
     -> m ()       
-couchSecureDB db adminRoles adminNames readersRoles readersNames = 
+couchSecureDB db adminRoles adminNames membersRoles membersNames = 
     void $ couch HT.methodPut 
             (mkPath [db, "_security"]) [] []
             reqBody protect' 
@@ -74,8 +74,8 @@ couchSecureDB db adminRoles adminNames readersRoles readersNames =
     reqBody = H.RequestBodyLBS $ A.encode $ A.object [
             "admins" A..= A.object [ "roles" A..= adminRoles,
                                      "names" A..= adminNames ],
-            "readers" A..= A.object [ "roles" A..= readersRoles,
-                                     "names" A..= readersNames ] ]
+            "members" A..= A.object [ "roles" A..= membersRoles,
+                                     "names" A..= membersNames ] ]
 
 -- | Database replication. 
 --
