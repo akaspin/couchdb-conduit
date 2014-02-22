@@ -58,7 +58,7 @@ couchPutAttach :: MonadCouch m =>
     -> ByteString       -- ^ Attachment path
     -> Revision         -- ^ Document revision
     -> ByteString       -- ^ Attacment @Content-Type@
-    -> RequestBody m    -- ^ Attachment body
+    -> RequestBody      -- ^ Attachment body
     -> m Revision
 couchPutAttach db doc att rev contentType body = do
     resp <- couch HT.methodPut

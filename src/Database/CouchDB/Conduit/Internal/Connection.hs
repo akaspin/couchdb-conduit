@@ -46,6 +46,18 @@ import qualified Blaze.ByteString.Builder as BLB
 import qualified Network.HTTP.Conduit as H
 import qualified Network.HTTP.Types as HT
 
+import qualified Data.Aeson as A
+import Control.Applicative (pure)
+
+---- dunno where to put and why aeson 0.7 removed those instances :/
+instance A.ToJSON B.ByteString where
+    toJSON = A.String . TE.decodeUtf8
+    {-# INLINE toJSON #-}
+
+instance A.FromJSON B.ByteString where
+    parseJSON = A.withText "ByteString" $ pure . TE.encodeUtf8
+    {-# INLINE parseJSON #-}
+
 -----------------------------------------------------------------------------
 -- Paths
 -----------------------------------------------------------------------------

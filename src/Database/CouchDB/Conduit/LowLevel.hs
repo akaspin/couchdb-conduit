@@ -31,6 +31,8 @@ import Data.Conduit.Attoparsec (sinkParser)
 import qualified Network.HTTP.Conduit as H
 import qualified Network.HTTP.Types as HT
 
+import Data.Default (def)
+
 import Database.CouchDB.Conduit.Internal.Connection
 
 -- | CouchDB response
@@ -46,7 +48,7 @@ couch :: MonadCouch m =>
                                 --   'couchPrefix' will be prepended to path.
     -> HT.RequestHeaders        -- ^ Headers
     -> HT.Query                 -- ^ Query args
-    -> H.RequestBody m          -- ^ Request body
+    -> H.RequestBody            -- ^ Request body
     -> (CouchResponse m -> m (CouchResponse m))
                                 -- ^ Protect function. See 'protect'
     -> m (CouchResponse m)
@@ -65,13 +67,13 @@ couch' :: MonadCouch m =>
                                 --   be correct 'Path' with escaped fragments.
     -> HT.RequestHeaders        -- ^ Headers
     -> HT.Query                 -- ^ Query args
-    -> H.RequestBody m          -- ^ Request body
+    -> H.RequestBody            -- ^ Request body
     -> (CouchResponse m -> m (CouchResponse m))
                                 -- ^ Protect function. See 'protect'
     -> m (CouchResponse m)
 couch' meth pathFn hdrs qs reqBody protectFn =  do
     (manager, conn) <- couchConnection
-    let req = H.def 
+    let req = def 
             { H.method          = meth
             , H.host            = couchHost conn
             , H.requestHeaders  = hdrs
