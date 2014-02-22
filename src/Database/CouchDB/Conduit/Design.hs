@@ -41,8 +41,8 @@ couchPutView db designName viewName mapF reduceF = do
         (constructView mapF reduceF) 
         (extractViews d)
     constructView :: B.ByteString -> Maybe B.ByteString -> A.Value
-    constructView m (Just r) = A.object ["map" A..= m, "reduce" A..= r]
-    constructView m Nothing = A.object ["map" A..= m]
+    constructView m (Just r) = A.object ["map" A..= TE.decodeUtf8 m, "reduce" A..= TE.decodeUtf8 r]
+    constructView m Nothing = A.object ["map" A..= TE.decodeUtf8 m]
 
 -----------------------------------------------------------------------------
 -- Internal

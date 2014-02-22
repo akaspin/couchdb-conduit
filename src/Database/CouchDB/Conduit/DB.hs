@@ -21,6 +21,7 @@ module Database.CouchDB.Conduit.DB (
 import Control.Monad (void)
 
 import qualified Data.ByteString as B
+import qualified Data.Text.Encoding as TE
 import qualified Data.Aeson as A
 
 import qualified Network.HTTP.Conduit as H
@@ -72,10 +73,10 @@ couchSecureDB db adminRoles adminNames readersRoles readersNames =
             reqBody protect' 
   where
     reqBody = H.RequestBodyLBS $ A.encode $ A.object [
-            "admins" A..= A.object [ "roles" A..= adminRoles,
-                                     "names" A..= adminNames ],
-            "readers" A..= A.object [ "roles" A..= readersRoles,
-                                     "names" A..= readersNames ] ]
+            "admins" A..= A.object [ "roles" A..= map TE.decodeUtf8 adminRoles,
+                                     "names" A..= map TE.decodeUtf8 adminNames ],
+            "readers" A..= A.object [ "roles" A..= map TE.decodeUtf8 readersRoles,
+                                      "names" A..= map TE.decodeUtf8 readersNames ] ]
 
 -- | Database replication. 
 --
@@ -93,8 +94,8 @@ couchReplicateDB source target createTarget continuous cancel =
             reqBody protect' 
   where
     reqBody = H.RequestBodyLBS $ A.encode $ A.object [
-            "source" A..= source,
-            "target" A..= target,
+            "source" A..= TE.decodeUtf8 source,
+            "target" A..= TE.decodeUtf8 target,
             "create_target" A..= createTarget,
             "continuous" A..= continuous,
             "cancel" A..= cancel ]

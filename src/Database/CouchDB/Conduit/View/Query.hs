@@ -18,6 +18,8 @@ module Database.CouchDB.Conduit.View.Query (
 ) where
 
 import qualified Data.ByteString as B
+import qualified Data.Text.Encoding as TE
+import qualified Data.Text as T
 import qualified Data.HashMap.Strict as MS
 import qualified Data.Aeson as A
 import Data.String.Conversions (cs, (<>))
@@ -174,8 +176,8 @@ mkQuery qs =
     parseqp QPIncludeDocs = boolqp "include_docs" True
     parseqp QPInclusiveEnd = boolqp "inclusive_end" False
     parseqp QPUpdateSeq = boolqp "update_seq" True
-    parseqp (QPStartKeyDocId v) = parseqp $ QPComplex "startkey_docid" v
-    parseqp (QPEndKeyDocId v) = parseqp $ QPComplex "endkey_docid" v
+    parseqp (QPStartKeyDocId v) = parseqp $ QPComplex "startkey_docid" $ TE.decodeUtf8 v
+    parseqp (QPEndKeyDocId v) = parseqp $ QPComplex "endkey_docid" $ TE.decodeUtf8 v
     
     -- | Boolean
     boolqp n v = parseqp $ QPBool n v
@@ -197,7 +199,7 @@ mkQuery qs =
 --   this to @\{\}@ (JSON unit). This useful for @startkey@ and @endkey@.
 --   
 -- > couchQuery [QPStartKey (1, 0), QPEndKey (1, {})]
-qpUnit :: MS.HashMap B.ByteString Bool
+qpUnit :: MS.HashMap T.Text Bool
 qpUnit = MS.empty
 
 -- | Simply return 'A.Null'.
