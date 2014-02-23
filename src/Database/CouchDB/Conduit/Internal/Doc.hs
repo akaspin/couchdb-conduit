@@ -12,6 +12,7 @@ module Database.CouchDB.Conduit.Internal.Doc (
     couchPutWith'
 ) where
 
+import              Prelude
 
 import Control.Monad (void)
 import Control.Exception.Lifted (catch, throw)
@@ -20,6 +21,7 @@ import Data.Maybe (fromJust)
 import qualified Data.ByteString as B
 import qualified Data.ByteString.Lazy as BL
 import qualified Data.Text.Encoding as TE
+import qualified Data.Text as T
 import qualified Data.Aeson as A
 import Data.Conduit (($$+-))
 import qualified Data.Conduit.Attoparsec as CA
@@ -40,11 +42,11 @@ couchRev :: MonadCouch m =>
        Path                 -- ^ Correct 'Path' with escaped fragments.
     -> m Revision
 couchRev p = do
-    resp <- couch HT.methodHead p [] [] 
-            (H.RequestBodyBS B.empty) protect' 
-    return $ peekRev $ H.responseHeaders resp        
+    response <- couch HT.methodHead p [] [] 
+                                 (H.RequestBodyBS B.empty) protect' 
+    return $ peekRev (map (fmap TE.decodeUtf8) $ H.responseHeaders response)        
   where
-    peekRev = B.tail . B.init . fromJust . lookup "Etag"
+    peekRev = T.tail . T.init . fromJust . lookup "Etag"
 
 -- | Brain-free version of 'couchRev'. If document absent, 
 --   just return 'B.empty'.
@@ -54,7 +56,7 @@ couchRev' :: MonadCouch m =>
 couchRev' p = 
     catch (couchRev p) handler404
   where
-    handler404 (CouchHttpError 404 _) = return B.empty
+    handler404 (CouchHttpError 404 _) = return T.empty
     handler404 e = throw e
 
 -- | Delete the given revision of the object.    
@@ -64,7 +66,7 @@ couchDelete :: MonadCouch m =>
     -> m ()
 couchDelete p r = void $
   couch methodDelete p 
-        [] [("rev", Just r)]
+        [] [("rev", Just (TE.encodeUtf8 r))]
         (H.RequestBodyBS B.empty) protect'
                
 ------------------------------------------------------------------------------
@@ -78,13 +80,13 @@ couchGetWith :: MonadCouch m =>
        -> Query                      -- ^ Query
        -> m (Revision, a)
 couchGetWith f p q = do
-    resp <- couch HT.methodGet 
-            p [] q 
-           (H.RequestBodyBS B.empty) protect'
-    j <- H.responseBody resp $$+- CA.sinkParser A.json
+    response <- couch HT.methodGet 
+                                 p [] q 
+                                 (H.RequestBodyBS B.empty) protect'
+    j <- (H.responseBody response) $$+- CA.sinkParser A.json
     A.String r <- either throw return $ extractField "_rev" j
     o <- jsonToTypeWith f j 
-    return (TE.encodeUtf8 r, o)
+    return (r, o)
 
 -- | Put document, with given encoder
 couchPutWith :: MonadCouch m =>
@@ -96,10 +98,10 @@ couchPutWith :: MonadCouch m =>
    -> a                     -- ^ The object to store.
    -> m Revision
 couchPutWith f p r q val = do
-    resp <- couch HT.methodPut 
-            p (ifMatch r) q 
-           (H.RequestBodyLBS $ f val) protect'
-    j <- H.responseBody resp $$+- CA.sinkParser A.json
+    response <- couch HT.methodPut 
+                                 p (ifMatch (TE.encodeUtf8 r)) q 
+                                 (H.RequestBodyLBS $ f val) protect'
+    j <- (H.responseBody response) $$+- CA.sinkParser A.json
     either throw return $ extractRev j
   where 
     ifMatch "" = []

@@ -13,6 +13,7 @@ import Database.CouchDB.Conduit.Test.Util
 import Control.Exception.Lifted (bracket_)
 import Control.Monad.IO.Class (liftIO)
 
+import Data.Text (Text)
 import Data.ByteString (ByteString)
 import Data.Generics (Data, Typeable)
 import Data.String.Conversions (cs, (<>))
@@ -79,5 +80,5 @@ setup = setupDB dbName
 teardown :: IO ()
 teardown = tearDB dbName
 
-dbName :: ByteString
+dbName :: Text
 dbName = "cdbc_test_generic"

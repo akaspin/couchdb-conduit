@@ -27,6 +27,8 @@ caseDescending = liftIO $ do
             [("startkey", Just "0"), ("endkey", Just "1")]
     mkQuery (QPDescending : swappable) @=? 
             [desc, ("endkey", Just "0"), ("startkey", Just "1")]
+    mkQuery [QPStartKey (0::Int,1::Int),QPEndKey (0::Int,qpUnit)] @=?
+            [("startkey", Just "[0,1]"), ("endkey", Just "[0,{}]")]
   where
     desc = ("descending", Just "true")
 

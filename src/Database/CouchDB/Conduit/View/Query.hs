@@ -18,7 +18,6 @@ module Database.CouchDB.Conduit.View.Query (
 ) where
 
 import qualified Data.ByteString as B
-import qualified Data.Text.Encoding as TE
 import qualified Data.Text as T
 import qualified Data.HashMap.Strict as MS
 import qualified Data.Aeson as A
@@ -176,9 +175,9 @@ mkQuery qs =
     parseqp QPIncludeDocs = boolqp "include_docs" True
     parseqp QPInclusiveEnd = boolqp "inclusive_end" False
     parseqp QPUpdateSeq = boolqp "update_seq" True
-    parseqp (QPStartKeyDocId v) = parseqp $ QPComplex "startkey_docid" $ TE.decodeUtf8 v
-    parseqp (QPEndKeyDocId v) = parseqp $ QPComplex "endkey_docid" $ TE.decodeUtf8 v
-    
+    parseqp (QPStartKeyDocId v) = parseqp $ QPComplex "startkey_docid" v
+    parseqp (QPEndKeyDocId v) = parseqp $ QPComplex "endkey_docid" v
+ 
     -- | Boolean
     boolqp n v = parseqp $ QPBool n v
     -- | Ommitable int

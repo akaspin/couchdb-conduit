@@ -73,15 +73,15 @@ test-suite test
                    test-framework >= 0.4.1,
                    test-framework-hunit,
                    couchdb-conduit,
-                   aeson >= 0.6 && < 0.7,
-                   attoparsec >= 0.8 && < 0.11,
+                   aeson >= 0.7 && < 0.8,
+                   attoparsec >= 0.11 && < 0.12,
                    attoparsec-conduit == 1.0.*,
                    blaze-builder >= 0.2.1 && < 0.4,
                    bytestring >= 0.9 && < 0.11,
                    conduit == 1.0.*,
                    containers >= 0.2,
                    data-default,
-                   http-conduit == 1.9.*,
+                   http-conduit == 2.0.*,
                    http-types >= 0.8 && < 0.9,
                    lifted-base >= 0.1,
                    monad-control >= 0.3 && < 0.4,
@@ -89,7 +89,7 @@ test-suite test
                    syb,
                    transformers >= 0.2 && < 0.4,
                    transformers-base >= 0.4 && < 0.5,
-                   text >= 0.11 && < 0.12,
+                   text == 1.1.*,
                    unordered-containers >= 0.1
                    
   ghc-options:     -Wall -rtsopts -threaded

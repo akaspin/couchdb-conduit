@@ -21,12 +21,14 @@ import Control.Exception.Lifted (throw)
 
 import Data.Maybe (fromMaybe)
 import Data.ByteString (ByteString)
-import Data.ByteString.Char8 (split)
+import Data.Text (Text,split)
+import qualified Data.Text.Encoding as TE
+
 import qualified Data.Aeson as A
 import Data.Conduit (ResumableSource, ($$+-))
 import qualified Data.Conduit.Attoparsec as CA
 
-import Network.HTTP.Conduit (RequestBody(..), Response(..))
+import qualified Network.HTTP.Conduit as H
 import qualified Network.HTTP.Types as HT
 
 import Database.CouchDB.Conduit.Internal.Connection 
@@ -38,53 +40,51 @@ import Database.CouchDB.Conduit.LowLevel (couch, protect')
 couchGetAttach :: MonadCouch m =>
        Path             -- ^ Database
     -> Path             -- ^ Document
-    -> ByteString       -- ^ Attachment path
+    -> Path       -- ^ Attachment path
     -> m (ResumableSource m ByteString, ByteString)
 couchGetAttach db doc att = do
-    resp <- couch HT.methodGet
+    response <- couch HT.methodGet
             (attachPath db doc att)
             []
             []
-            (RequestBodyBS "")
+            (H.RequestBodyBS "")
             protect'
-    let bsrc = responseBody resp
-        hs   = responseHeaders resp
-    return (bsrc, fromMaybe "" . lookup "Content-Type" $ hs)
+    return ((H.responseBody response), fromMaybe "" . lookup "Content-Type" $ (H.responseHeaders response))
 
 -- | Put or update document attachment
 couchPutAttach :: MonadCouch m =>
        Path             -- ^ Database
     -> Path             -- ^ Document
-    -> ByteString       -- ^ Attachment path
+    -> Path             -- ^ Attachment path
     -> Revision         -- ^ Document revision
-    -> ByteString       -- ^ Attacment @Content-Type@
-    -> RequestBody      -- ^ Attachment body
+    -> Text             -- ^ Attacment @Content-Type@
+    -> H.RequestBody    -- ^ Attachment body
     -> m Revision
 couchPutAttach db doc att rev contentType body = do
-    resp <- couch HT.methodPut
+    response <- couch HT.methodPut
             (attachPath db doc att)
-            [(HT.hContentType, contentType)]
-            [("rev", Just rev)]
+            [(HT.hContentType, TE.encodeUtf8 contentType)]
+            [("rev", Just (TE.encodeUtf8 rev))]
             body
             protect'
-    j <- responseBody resp $$+- CA.sinkParser A.json
+    j <- (H.responseBody response) $$+- CA.sinkParser A.json
     either throw return $ extractRev j
 
 -- | Delete document attachment
 couchDeleteAttach :: MonadCouch m =>
        Path             -- ^ Database
     -> Path             -- ^ Document
-    -> ByteString       -- ^ Attachment path
+    -> Path       -- ^ Attachment path
     -> Revision         -- ^ Document revision
     -> m Revision
 couchDeleteAttach db doc att rev = do
-    resp <- couch HT.methodDelete
+    response <- couch HT.methodDelete
             (attachPath db doc att)
             []
-            [("rev", Just rev)]
-            (RequestBodyBS "")
+            [("rev", Just (TE.encodeUtf8 rev))]
+            (H.RequestBodyBS "")
             protect'
-    j <- responseBody resp $$+- CA.sinkParser A.json
+    j <- (H.responseBody response) $$+- CA.sinkParser A.json
     either throw return $ extractRev j
 
 ------------------------------------------------------------------------------
@@ -92,8 +92,8 @@ couchDeleteAttach db doc att rev = do
 ------------------------------------------------------------------------------
 
 -- | Make normalized attachment path
-attachPath :: Path -> Path -> ByteString -> Path
+attachPath :: Path -> Path -> Text -> Path
 attachPath db doc att = 
     mkPath $ db : doc : attP
   where
-    attP = split '/' att
+    attP = split (== '/') att

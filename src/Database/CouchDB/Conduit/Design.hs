@@ -7,11 +7,13 @@ module Database.CouchDB.Conduit.Design (
     couchPutView
 ) where
 
+import Prelude
 import Control.Monad (void)
 import Control.Exception.Lifted (catch)
 
 import qualified Data.ByteString as B
 import Data.Text (Text)
+import qualified Data.Text as T
 import qualified Data.Text.Encoding as TE
 import qualified Data.HashMap.Lazy as M
 import qualified Data.Aeson as A
@@ -27,8 +29,8 @@ couchPutView :: MonadCouch m =>
        Path                 -- ^ Database
     -> Path                 -- ^ Design document
     -> Path                 -- ^ View name
-    -> B.ByteString         -- ^ Map function
-    -> Maybe B.ByteString   -- ^ Reduce function
+    -> T.Text         -- ^ Map function
+    -> Maybe T.Text  -- ^ Reduce function
     -> m ()
 couchPutView db designName viewName mapF reduceF = do
     (_, A.Object d) <- getDesignDoc path
@@ -37,12 +39,12 @@ couchPutView db designName viewName mapF reduceF = do
     path = designDocPath db designName
     inferViews d = A.Object $ M.insert "views" (addView d) d
     addView d = A.Object $ M.insert 
-        (TE.decodeUtf8 viewName)
+        (viewName)
         (constructView mapF reduceF) 
         (extractViews d)
-    constructView :: B.ByteString -> Maybe B.ByteString -> A.Value
-    constructView m (Just r) = A.object ["map" A..= TE.decodeUtf8 m, "reduce" A..= TE.decodeUtf8 r]
-    constructView m Nothing = A.object ["map" A..= TE.decodeUtf8 m]
+    constructView :: T.Text  -> Maybe T.Text  -> A.Value
+    constructView m (Just r) = A.object ["map" A..= m, "reduce" A..= r]
+    constructView m Nothing = A.object ["map" A..= m]
 
 -----------------------------------------------------------------------------
 -- Internal
@@ -53,7 +55,7 @@ getDesignDoc :: MonadCouch m =>
     -> m (Revision, AT.Value)
 getDesignDoc designName = catch 
         (couchGetWith A.Success designName [])
-        (\(_ :: CouchError) -> return (B.empty, AT.emptyObject))
+        (\(_ :: CouchError) -> return (T.empty, AT.emptyObject))
     
 designDocPath :: Path -> Path -> Path
 designDocPath db dn = mkPath [db, "_design", dn]

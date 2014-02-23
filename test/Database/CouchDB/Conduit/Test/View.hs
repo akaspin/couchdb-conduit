@@ -15,6 +15,8 @@ import Control.Monad.IO.Class (liftIO)
 import Control.Applicative ((<$>), (<*>), empty)
 
 import qualified Data.ByteString as B
+import qualified Data.Text as T
+
 import Data.String.Conversions ((<>), cs)
 import qualified Data.Aeson as A
 import Data.Aeson ((.:), (.=))
@@ -117,5 +119,5 @@ caseUpdateSeqAfter = bracket_
     db = "cdbc_test_view_after"
     doc n = T "doc" n $ show n
   
-docName :: Int -> B.ByteString
+docName :: Int -> T.Text
 docName n = cs $ "doc" <> show n    

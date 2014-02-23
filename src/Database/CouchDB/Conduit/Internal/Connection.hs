@@ -42,7 +42,7 @@ import qualified Data.ByteString as B
 import qualified Data.Text.Encoding as TE
 import qualified Blaze.ByteString.Builder as BLB
 
-
+import qualified Data.Text as T
 import qualified Network.HTTP.Conduit as H
 import qualified Network.HTTP.Types as HT
 
@@ -65,10 +65,10 @@ import qualified Network.HTTP.Types as HT
 -- > database/_design/my%2Fdesign/_view/my%2Fview
 --
 -- Except low-level functions, @couchdb-conduit@ escapes all segments in paths.  
-type Path = B.ByteString
+type Path = T.Text
 
 -- | Represents a revision of a CouchDB Document. 
-type Revision = B.ByteString
+type Revision = T.Text
 
 -- | Make correct path and escape fragments. Filter empty fragments.
 --
@@ -76,8 +76,8 @@ type Revision = B.ByteString
 -- > /db/doc%2Fwith%2Fslashes
 mkPath :: [Path]    -- ^ Path fragments be escaped.  
        -> Path
-mkPath = BLB.toByteString . HT.encodePathSegments . 
-    map TE.decodeUtf8 . filter (/="")
+mkPath = TE.decodeUtf8 . BLB.toByteString . HT.encodePathSegments . 
+     filter (/="")
     
 -----------------------------------------------------------------------------
 -- Connection
@@ -87,21 +87,21 @@ mkPath = BLB.toByteString . HT.encodePathSegments .
 --   data type is not exposed. Instead, you should use either the 'def' method 
 --   to retrieve a default instance.
 data CouchConnection = CouchConnection {
-      couchHost :: B.ByteString     
+      couchHost :: T.Text     
         -- ^ Hostname. Default value is \"localhost\"
     , couchPort :: Int              
         -- ^ Port. 5984 by default.
-    , couchLogin :: B.ByteString
+    , couchLogin :: T.Text
         -- ^ CouchDB login. By default is 'B.empty'.
-    , couchPass :: B.ByteString
+    , couchPass :: T.Text
         -- ^ CouchDB password. By default is 'B.empty'.
-    , couchPrefix :: B.ByteString
+    , couchPrefix :: Path -- B.ByteString
         -- ^ CouchDB database prefix. It will prepended to first fragment of
         --   request path. Must be fully valid DB name fragment.
 }
 
 instance Default CouchConnection where
-    def = CouchConnection "localhost" 5984 B.empty B.empty B.empty
+    def = CouchConnection "localhost" 5984 T.empty T.empty T.empty
 
 -----------------------------------------------------------------------------
 -- Runtime

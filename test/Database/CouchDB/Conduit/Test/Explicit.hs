@@ -13,6 +13,7 @@ import Control.Exception.Lifted (bracket_)
 import Control.Monad.IO.Class (liftIO)
 import Control.Applicative ((<$>), (<*>), empty)
 
+import Data.Text (Text)
 import Data.ByteString (ByteString)
 import Data.Aeson
 import Data.String.Conversions ((<>), cs)
@@ -86,5 +87,5 @@ setup = setupDB dbName
 teardown :: IO ()
 teardown = tearDB dbName
 
-dbName :: ByteString
+dbName :: Text
 dbName = "cdbc_test_explicit"   

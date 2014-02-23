@@ -20,8 +20,9 @@ module Database.CouchDB.Conduit.DB (
 
 import Control.Monad (void)
 
-import qualified Data.ByteString as B
+import qualified Data.Text as T
 import qualified Data.Text.Encoding as TE
+import qualified Data.ByteString as B
 import qualified Data.Aeson as A
 
 import qualified Network.HTTP.Conduit as H
@@ -37,7 +38,7 @@ couchPutDB :: MonadCouch m =>
        Path             -- ^ Database
     -> m ()
 couchPutDB db = void $ couch HT.methodPut 
-                            (mkPath [db]) [] [] 
+                            ( mkPath [db]) [] [] 
                             (H.RequestBodyBS B.empty)
                             protect'
 
@@ -49,7 +50,7 @@ couchPutDB_ :: MonadCouch m =>
 couchPutDB_ db = void $ couch HT.methodPut 
                     (mkPath [db]) [] []
                     (H.RequestBodyBS B.empty) 
-                    (protect [200, 201, 202, 304, 412] return) 
+                    (protect [HT.status200, HT.status201, HT.status202, HT.status304, HT.status412] return) 
 
 -- | Delete a database.
 couchDeleteDB :: MonadCouch m => 
@@ -62,10 +63,10 @@ couchDeleteDB db = void $ couch HT.methodDelete
 -- | Maintain DB security.
 couchSecureDB :: MonadCouch m => 
        Path             -- ^ Database
-    -> [B.ByteString]   -- ^ Admin roles 
-    -> [B.ByteString]   -- ^ Admin names
-    -> [B.ByteString]   -- ^ Readers roles 
-    -> [B.ByteString]   -- ^ Readers names
+    -> [T.Text]   -- ^ Admin roles 
+    -> [T.Text]   -- ^ Admin names
+    -> [T.Text]   -- ^ Readers roles 
+    -> [T.Text]   -- ^ Readers names
     -> m ()       
 couchSecureDB db adminRoles adminNames readersRoles readersNames = 
     void $ couch HT.methodPut 
@@ -73,18 +74,18 @@ couchSecureDB db adminRoles adminNames readersRoles readersNames =
             reqBody protect' 
   where
     reqBody = H.RequestBodyLBS $ A.encode $ A.object [
-            "admins" A..= A.object [ "roles" A..= map TE.decodeUtf8 adminRoles,
-                                     "names" A..= map TE.decodeUtf8 adminNames ],
-            "readers" A..= A.object [ "roles" A..= map TE.decodeUtf8 readersRoles,
-                                      "names" A..= map TE.decodeUtf8 readersNames ] ]
+            "admins" A..= A.object [ "roles" A..= adminRoles,
+                                     "names" A..= adminNames ],
+            "readers" A..= A.object [ "roles" A..= readersRoles,
+                                     "names" A..= readersNames ] ]
 
 -- | Database replication. 
 --
 --   See <http://guide.couchdb.org/editions/1/en/api.html#replication> for 
 --   details.
 couchReplicateDB :: MonadCouch m => 
-       B.ByteString     -- ^ Source database. Path or URL 
-    -> B.ByteString     -- ^ Target database. Path or URL 
+       Path     -- ^ Source database. Path or URL 
+    -> Path     -- ^ Target database. Path or URL 
     -> Bool             -- ^ Target creation flag
     -> Bool             -- ^ Continuous flag
     -> Bool             -- ^ Cancel flag
@@ -94,8 +95,8 @@ couchReplicateDB source target createTarget continuous cancel =
             reqBody protect' 
   where
     reqBody = H.RequestBodyLBS $ A.encode $ A.object [
-            "source" A..= TE.decodeUtf8 source,
-            "target" A..= TE.decodeUtf8 target,
+            "source" A..= source,
+            "target" A..= target,
             "create_target" A..= createTarget,
             "continuous" A..= continuous,
             "cancel" A..= cancel ]
